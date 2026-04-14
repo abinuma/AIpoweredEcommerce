@@ -1,0 +1,17 @@
+unlike normal function argumnets and parameters . props   must have the same name when passing it in both sides(as parametrs and arguments). eg. addToCart(productData._id,size).  const addToCart = async (itemId,size) => {
+    let cartData = structuredClone(cartItems);
+
+    if (cartData[itemId]) {
+      if(cartData[itemId][size]){
+        cartData[itemId][size] += 1;
+      }
+      else{
+        cartData[itemId][size] = 1;
+      }
+    }
+    else{
+      cartData[itemId] = {};
+      cartData[itemId][size] = 1;
+    }
+    setCartItems(cartData);
+  }
