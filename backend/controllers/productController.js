@@ -6,6 +6,7 @@ const addProduct = async (req, res) => {
   try {
     const {
       name,
+      seller_id,
       description,
       price,
       category,
@@ -42,6 +43,7 @@ parsedSizes.sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
 
     const productData = {
       name,
+      seller_id,
       description,
       category,
       price: Number(price),
@@ -57,6 +59,7 @@ parsedSizes.sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
     await pool.query(
       `INSERT INTO products(
         name,
+        seller_id,
         description,
         price,
         category,
@@ -65,9 +68,10 @@ parsedSizes.sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
         sizes,
         image,
         date
-      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
       [
         productData.name,
+        productData.seller_id,
         productData.description,
         productData.price,
         productData.category,
@@ -88,7 +92,10 @@ parsedSizes.sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
 // function for list products
 const listProducts = async (req, res) => {
   try {
-    const { rows } = await pool.query(
+    const {seller_id} = req.body
+    let productRows ;
+    if (!seller_id) {
+      const result = await pool.query(
       `SELECT
         id AS "_id",
         name,
@@ -100,10 +107,31 @@ const listProducts = async (req, res) => {
         sizes,
         bestseller,
         date
-      FROM products
+      FROM products 
       ORDER BY date DESC`,
     );
-    res.json({ success: true, products: rows });
+      productRows = result.rows  
+  } else{
+      const result = await pool.query(
+      `SELECT
+        id AS "_id",
+        name,
+        description,
+        price,
+        image,
+        category,
+        sub_category AS "subCategory",
+        sizes,
+        bestseller,
+        date
+      FROM products WHERE seller_id = $1
+      ORDER BY date DESC`,
+      [seller_id]
+    );
+      productRows = result.rows  
+  }
+    
+    res.json({ success: true, products: productRows });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });

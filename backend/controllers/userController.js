@@ -38,6 +38,7 @@ const loginUser = async (req, res) => {
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    const role = email=== process.env.ADMIN_EMAIL? 'admin' : 'client'
 
     //checking user already exist or not
     const { rows: existing } = await pool.query(
@@ -67,14 +68,14 @@ const registerUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const { rows } = await pool.query(
-      "INSERT INTO users(name, email, password) VALUES($1, $2, $3) RETURNING id",
-      [name, email, hashedPassword],
+  const { rows } = await pool.query(
+      "INSERT INTO users(name, email,role, password) VALUES($1, $2, $3,$4) RETURNING id",
+      [name, email,role, hashedPassword],
     );
-
     const token = createToken(rows[0].id);
 
     res.json({ success: true, token });
+    console.log('role is:' + role +' \n email is:' + email)
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
@@ -82,24 +83,24 @@ const registerUser = async (req, res) => {
 };
 
 //Route for admin login
-const adminLogin = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (
-      email === process.env.ADMIN_EMAIL &&
-      password === process.env.ADMIN_PASSWORD
-    ) {
-      const token = jwt.sign(email + password, process.env.JWT_SECRET);
-      res.json({ success: true, token });
-    } else {
-      res.json({ success: false, message: "Invalid credentials" });
-    }
-  } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: error.message });
-  }
-};
+// const adminLogin = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+//     if (
+//       email === process.env.ADMIN_EMAIL &&
+//       password === process.env.ADMIN_PASSWORD
+//     ) {
+//       const token = jwt.sign(email + password, process.env.JWT_SECRET);
+//       res.json({ success: true, token });
+//     } else {
+//       res.json({ success: false, message: "Invalid credentials" });
+//     }
+//   } catch (error) {
+//     console.log(error);
+//     res.json({ success: false, message: error.message });
+//   }
+// };
 
-export { loginUser, registerUser, adminLogin };
+export { loginUser, registerUser,becomeSeller,getSellerRequest,updateSellerRequest };
 
 

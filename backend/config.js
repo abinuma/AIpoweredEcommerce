@@ -1,3 +1,29 @@
+// --- cloudinary.js ---
+import {v2 as cloudinary} from 'cloudinary';
+
+const connectCloudinary = async () => {
+    cloudinary.config({
+        cloud_name : process.env.CLOUDINARY_NAME,
+        api_key : process.env.CLOUDINARY_API_KEY,
+        api_secret : process.env.CLOUDINARY_SECRET_KEY
+    })
+}
+
+export default connectCloudinary;
+
+// --- mongodb.js ---
+import mongoose from 'mongoose';
+
+const connectDB = async () => {
+    mongoose.connection.on('connected', () => {
+        console.log('DB Connected')
+    })
+    await mongoose.connect(`${process.env.MONGODB_URI}/ecommerce` )
+}
+
+export default connectDB;
+
+// --- postgres.js ---
 import { Pool, types } from "pg";
 
 // Parse BIGINT (int8) as integer (OID for BIGINT is 20)
@@ -27,18 +53,14 @@ const connectDB = async () => {
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       name text NOT NULL,
       email text NOT NULL UNIQUE,
-      role text NOT NULL DEFAULT 'client' CHECK (role IN ('client','seller','admin')) ,
+      role text NOT NULL DEFAULT 'client',
       password text NOT NULL,
-      shop_name text,
-      latitude text,
-      longitude text,
       cart_data jsonb NOT NULL DEFAULT '{}'::jsonb
     );
 
     CREATE TABLE IF NOT EXISTS products (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       name text NOT NULL,
-      seller_id uuid  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       description text NOT NULL,
       price double precision NOT NULL,
       image jsonb NOT NULL,
@@ -60,24 +82,6 @@ const connectDB = async () => {
       payment boolean NOT NULL DEFAULT false,
       date bigint NOT NULL
     );
-    // CREATE TABLE IF NOT EXISTS reviews (
-    // id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    // product_id NOT NULL,
-    // user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    // rating text,
-    // comment text,
-    // date bigint NOT NULL
-    // )
-    CREATE TABLE IF NOT EXISTS sellerRequest(
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    shop_name text NOT NULL,
-    business_detail text,
-    latitude text NOT NULL,
-    longitude text NOT NULL,
-    status text NOT NULL DEFAULT 'pending' CHECK( status IN ('pending' ,'approved' , 'rejected')),
-    date bigint NOT NULL
-    )
 
     CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
   `);
@@ -86,4 +90,3 @@ const connectDB = async () => {
 };
 
 export default connectDB;
-
