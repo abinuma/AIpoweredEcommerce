@@ -1,7 +1,7 @@
 import express from "express";
 import {placeOrder,placeOrderStripe,placeOrderRazorpay,allOrders,userOrders,updateStatus,verifyStripe } from "../controllers/orderController.js";
 import adminAuth from "../middleware/adminAuth.js";
-import authUser from "../middleware/auth.js";
+import authUser, { isSuspended } from "../middleware/auth.js";
 
 const orderRouter = express.Router();
 
@@ -10,9 +10,9 @@ orderRouter.get("/list", adminAuth, allOrders);
 orderRouter.patch("/status", adminAuth, updateStatus);
 
 //payment features
-orderRouter.post("/place", authUser, placeOrder);
-orderRouter.post("/stripe", authUser, placeOrderStripe);
-orderRouter.post("/razorpay", authUser,placeOrderRazorpay);
+orderRouter.post("/place", authUser, isSuspended,placeOrder);
+orderRouter.post("/stripe", authUser, isSuspended,placeOrderStripe);
+orderRouter.post("/razorpay", authUser, isSuspended,placeOrderRazorpay);
 
 //user features
 orderRouter.get("/userorders", authUser, userOrders);

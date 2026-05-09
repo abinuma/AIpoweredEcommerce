@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { pool } from '../config/postgres.js';
 
 const authUser = async (req,res,next) => {
     const token = req.headers.authorization;
@@ -15,6 +16,19 @@ const authUser = async (req,res,next) => {
     } catch (error) {
         console.log(error)
         res.json({success: false, message: error.message})
+    }
+}
+
+export const isSuspended = async (req,res,next) => {
+    try {
+        const {rows} = await pool.query("SELECT suspended FROM users WHERE id=$1 LIMIT 1 ", [req.userId])
+        if (rows[0].suspended) {
+            return res.status(403).json({success:false,message:"your account has been suspended"})
+        }
+        next();
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({success: false, message: error.message})
     }
 }
 

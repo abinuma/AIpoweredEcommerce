@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { pool } from "../config/postgres.js";
 
 const adminAuth = async (req,res,next) => {
     try {
@@ -7,9 +8,14 @@ const adminAuth = async (req,res,next) => {
             return res.json({ success: false, message: "not Authorized login again" });
         }
         const token_decode = jwt.verify(token, process.env.JWT_SECRET);
-        if (token_decode !== process.env.ADMIN_EMAIL + process.env.ADMIN_PASSWORD) {
-            return res.json({ success: false, message: "not Authorized login again" });
+        const {rows} = await pool.query(
+            "SELECT role FROM users WHERE id=$1 LIMIT 1 ",
+            [token_decode.id]
+        )
+        if (!rows[0] || rows[0].role !== "admin") {
+            return res.status(403).json({success:false,message:"not Authorized login again"})
         }
+       req.userId=token_decode.id;
         next();
     } catch (error) {
         return res.json({ success: false, message: error.message});

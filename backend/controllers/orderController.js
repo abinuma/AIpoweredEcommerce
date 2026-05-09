@@ -17,18 +17,33 @@ const placeOrder = async (req,res) => {
         const userId = req.userId;
         const {items, amount, address} = req.body;
 
+        // Get seller_id from the first item's product
+        let sellerId = null;
+        if (items && items.length > 0) {
+            const itemId = items[0]._id || items[0].id || items[0].productId;
+            if (itemId) {
+                const { rows: productRows } = await pool.query(
+                    "SELECT seller_id FROM products WHERE id = $1 LIMIT 1",
+                    [itemId]
+                );
+                sellerId = productRows[0]?.seller_id || null;
+            }
+        }
+
         await pool.query(
           `INSERT INTO orders(
             user_id,
+            seller_id,
             items,
             address,
             amount,
             payment_method,
             payment,
             date
-          ) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+          ) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
           [
             userId,
+            sellerId,
             JSON.stringify(items),
             JSON.stringify(address),
             amount,
@@ -57,18 +72,33 @@ const placeOrderStripe = async (req,res) => {
         const {items, amount, address} = req.body;
         const {origin} = req.headers;
 
+        // Get seller_id from the first item's product
+        let sellerId = null;
+        if (items && items.length > 0) {
+            const itemId = items[0]._id || items[0].id || items[0].productId;
+            if (itemId) {
+                const { rows: productRows } = await pool.query(
+                    "SELECT seller_id FROM products WHERE id = $1 LIMIT 1",
+                    [itemId]
+                );
+                sellerId = productRows[0]?.seller_id || null;
+            }
+        }
+
         const { rows: inserted } = await pool.query(
           `INSERT INTO orders(
             user_id,
+            seller_id,
             items,
             address,
             amount,
             payment_method,
             payment,
             date
-          ) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+          ) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
           [
             userId,
+            sellerId,
             JSON.stringify(items),
             JSON.stringify(address),
             amount,

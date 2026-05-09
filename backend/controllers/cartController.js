@@ -6,8 +6,7 @@ const addToCart = async (req, res) => {
     const userId = req.userId;
     // const {userId,  itemId, size } = req.body;
     const { itemId, size } = req.body;
-
-    const { rows } = await pool.query(
+     const { rows } = await pool.query(
       "SELECT cart_data FROM users WHERE id = $1 LIMIT 1",
       [userId],
     );

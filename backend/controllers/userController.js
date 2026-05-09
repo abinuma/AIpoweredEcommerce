@@ -101,6 +101,6 @@ const registerUser = async (req, res) => {
 //   }
 // };
 
-export { loginUser, registerUser,becomeSeller,getSellerRequest,updateSellerRequest };
+export { loginUser, registerUser};
 
 
