@@ -91,13 +91,13 @@ const getProductReview = async (req, res) => {
             success: true,
             reviews,
             stats: {
-                total_reviews: parseInt(stats.total_reviews),
+                total_reviews: parseInt(stats.total_reviews) || 0,
                 average_rating: parseFloat(stats.average_rating) || 0,
-                five_star: parseInt(stats.five_star),
-                four_star: parseInt(stats.four_star),
-                three_star: parseInt(stats.three_star),
-                two_star: parseInt(stats.two_star),
-                one_star: parseInt(stats.one_star),
+                five_star: parseInt(stats.five_star) || 0,
+                four_star: parseInt(stats.four_star) || 0,
+                three_star: parseInt(stats.three_star) || 0,
+                two_star: parseInt(stats.two_star) || 0,
+                one_star: parseInt(stats.one_star) || 0,
             },
         });
     } catch (error) {

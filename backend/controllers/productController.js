@@ -54,8 +54,6 @@ parsedSizes.sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
       image: imagesUrl,
       date: Date.now(),
     };
-    console.log(productData);
-
     await pool.query(
       `INSERT INTO products(
         name,
@@ -92,7 +90,7 @@ parsedSizes.sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
 // function for list products
 const listProducts = async (req, res) => {
   try {
-    const {seller_id} = req.body
+    const seller_id = req.query.seller_id || null;
     let productRows ;
     if (!seller_id) {
       const result = await pool.query(

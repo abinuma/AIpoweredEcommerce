@@ -178,11 +178,12 @@ const verifyStripe = async (req,res) => {
 
 //placing orders using razorpay method
 
-const placeOrderRazorpay = async (req,res) => {
+const placeOrderRazorpay = async (req,res) =>{
     try {
-        
+        res.status(501).json({ success: false, message: "Razorpay is not yet implemented" });
     } catch (error) {
-        
+        console.log(error);
+        res.json({ success: false, message: error.message });
     }
 }
 
