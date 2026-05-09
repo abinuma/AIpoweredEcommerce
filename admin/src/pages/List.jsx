@@ -19,7 +19,6 @@ const List = ({ token }) => {
       } else {
         toast.error(response.data.message);
       }
-      console.log(response);
     } catch (error) {
       console.log(error);
       toast.error(error.message);

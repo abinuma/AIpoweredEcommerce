@@ -10,7 +10,7 @@ const Orders = () => {
 
   const [orderData, setOrderData] = useState([]);
 
-  const loadOrderData = async (params) => {
+  const loadOrderData = async () => {
     try {
       if (!token) {
         return null
@@ -29,7 +29,6 @@ const Orders = () => {
           })
         })
         setOrderData(allOrders.reverse())
-        console.log(orderData)
       }
 
     } catch (error) {

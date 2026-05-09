@@ -11,18 +11,18 @@ const Verify = () => {
   const success = searchParams.get("success");
   const orderId = searchParams.get("orderId");
 
-  const verifyPayment = async (params) => {
+  const verifyPayment = async () => {
     try {
       if (!token) {
         return null;
       }
 
-      const reponse = await axios.patch(
+      const response = await axios.patch(
         backendUrl + "/api/order/verifyStripe",
         { success, orderId },
         { headers: { Authorization: token } },
       );
-      if (reponse.data.success) {
+      if (response.data.success) {
         setCartItems({});
         navigate("/orders");
       } else {
