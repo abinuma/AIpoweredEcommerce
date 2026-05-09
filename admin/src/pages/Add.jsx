@@ -18,6 +18,38 @@ const Add = ({token}) => {
   const [bestseller, setBestseller] = useState(false);
   const [sizes, setSizes] = useState([]);
 
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [showRegen, setShowRegen] = useState(false);
+  const [regenInstruction, setRegenInstruction] = useState("");
+
+  const generateDescription = async () => {
+    if (!name.trim()) { toast.error("Enter a product name first"); return; }
+    setAiGenerating(true);
+    try {
+      const res = await axios.post(backendUrl + '/api/description/generate', 
+        { name, category, subCategory, sizes, price },
+        { headers: { authorization: token } }
+      );
+      if (res.data.success) { setDescription(res.data.description); setShowRegen(true); }
+      else toast.error(res.data.message);
+    } catch (e) { toast.error(e.message); }
+    setAiGenerating(false);
+  };
+
+  const regenerateDescription = async () => {
+    if (!regenInstruction.trim()) return;
+    setAiGenerating(true);
+    try {
+      const res = await axios.post(backendUrl + '/api/description/regenerate', 
+        { name, category, currentDescription: description, instruction: regenInstruction },
+        { headers: { authorization: token } }
+      );
+      if (res.data.success) { setDescription(res.data.description); setRegenInstruction(""); }
+      else toast.error(res.data.message);
+    } catch (e) { toast.error(e.message); }
+    setAiGenerating(false);
+  };
+
   const onSubmitHandler =async (e) =>{
     e.preventDefault();
     try {
@@ -131,15 +163,45 @@ const Add = ({token}) => {
         />
       </div>
       <div className="w-full">
-        <p className="mb-2">Product description</p>
+        <div className="flex items-center justify-between mb-2 max-w-125">
+          <p>Product description</p>
+          <button 
+            type="button" 
+            onClick={generateDescription}
+            disabled={aiGenerating || !name.trim()}
+            className="text-xs bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3 py-1 rounded shadow hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            {aiGenerating && !showRegen ? "Generating..." : "✨ Generate with AI"}
+          </button>
+        </div>
         <textarea
-          className="w-full max-w-125 px-3 py-2"
+          className="w-full max-w-125 px-3 py-2 border border-gray-300 rounded"
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Write content here"
           required
+          rows={4}
         />
+        {showRegen && (
+          <div className="flex items-center gap-2 mt-2 max-w-125">
+            <input 
+              type="text" 
+              value={regenInstruction} 
+              onChange={e => setRegenInstruction(e.target.value)} 
+              placeholder="e.g. Make it shorter, Focus on durability" 
+              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded"
+            />
+            <button 
+              type="button" 
+              onClick={regenerateDescription}
+              disabled={aiGenerating || !regenInstruction.trim()}
+              className="text-xs bg-gray-800 text-white px-3 py-2 rounded hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {aiGenerating ? "..." : "🔄 Regenerate"}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 w-full sm:gap-8">
