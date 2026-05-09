@@ -86,6 +86,29 @@ const registerUser = async (req, res) => {
 const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    // Auto-create/verify hardcoded admin from ENV
+    if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+        let { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+        let adminUser = rows[0];
+        
+        if (!adminUser) {
+             const salt = await bcrypt.genSalt(10);
+             const hashedPassword = await bcrypt.hash(password, salt);
+             const result = await pool.query(
+                 "INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, 'admin') RETURNING *",
+                 ['Admin', email, hashedPassword]
+             );
+             adminUser = result.rows[0];
+        } else if (adminUser.role !== 'admin') {
+             await pool.query("UPDATE users SET role = 'admin' WHERE id = $1", [adminUser.id]);
+             adminUser.role = 'admin';
+        }
+        
+        const token = createToken(adminUser.id);
+        return res.status(200).json({ success: true, token });
+    }
+
     const { rows } = await pool.query(
       "SELECT id, password, role FROM users WHERE email = $1 LIMIT 1",
       [email]
@@ -93,24 +116,24 @@ const adminLogin = async (req, res) => {
     const user = rows[0];
     
     if (!user) {
-      return res.json({ success: false, message: "Invalid credentials" });
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
     if (user.role !== 'admin') {
-      return res.json({ success: false, message: "Not authorized as admin" });
+      return res.status(403).json({ success: false, message: "Not authorized as admin" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (isMatch) {
       const token = createToken(user.id);
-      res.json({ success: true, token });
+      res.status(200).json({ success: true, token });
     } else {
-      res.json({ success: false, message: "Invalid credentials" });
+      res.status(401).json({ success: false, message: "Invalid credentials" });
     }
   } catch (error) {
     console.log(error);
-    res.json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
