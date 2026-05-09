@@ -73,6 +73,12 @@ const Navbar = () => {
                   Orders
                 </p>
                 <p
+                  onClick={() => navigate("/seller-request")}
+                  className="cursor-pointer hover:text-black "
+                >
+                  Become a Seller
+                </p>
+                <p
                   onClick={logout}
                   className="cursor-pointer hover:text-black "
                 >

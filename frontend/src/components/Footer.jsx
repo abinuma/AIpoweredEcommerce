@@ -1,6 +1,6 @@
 import React from "react";
 import { assets } from "../assets/assets";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Footer = () => {
   const navigate = useNavigate();
@@ -16,18 +16,17 @@ const Footer = () => {
         <div>
           <p className="text-xl font-medium mb-5">COMPANY</p>
           <ul className="flex flex-col gap-1 text-gray-600">
-            <Link>Hiome</Link>
-            <Link>About us</Link>
-            <Link>Deliver</Link>
-            <Link>Privacy policy</Link>
-            
+            <Link to="/">Home</Link>
+            <Link to="/about">About us</Link>
+            <Link to="/collection">Collection</Link>
+            <Link to="/contact">Contact</Link>
           </ul>
         </div>
         <div>
           <p className="text-xl font-medium mb-5">GET IN TOUCH</p>
           <ul className="flex flex-col gap-1 text-gray-600">
             <li>+2519-028-82087 </li>
-            <Link>contact@crownwear.com</Link>
+            <Link to="/contact">contact@crownwear.com</Link>
           </ul>
         </div>
       </div>
