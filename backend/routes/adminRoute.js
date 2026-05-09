@@ -6,9 +6,9 @@ const adminRouter = express.Router();
 
 adminRouter.get('/users',adminAuth,getAllUsers)
 adminRouter.get('/users/:id',adminAuth,getUserById)
-adminRouter.patch('/users/update',adminAuth,updateUserRole)
-adminRouter.patch('/users/:id/suspend',adminAuth,suspendUser)
-adminRouter.delete('/users/:id/delete',adminAuth,deleteUser)
+adminRouter.put('/users/update',adminAuth,updateUserRole)
+adminRouter.put('/users/:id/suspend',adminAuth,suspendUser)
+adminRouter.put('/users/:id/delete',adminAuth,deleteUser)
 adminRouter.get('/products',adminAuth,getAllProducts)
 adminRouter.delete('/products/:id/delete',adminAuth,removeProductAdmin)
 adminRouter.get('/analytics',adminAuth,getPlatformAnalytics)
