@@ -131,4 +131,21 @@ const updateSellerLocation = async (req, res) => {
     }
 };
 
-export { getNearByShop, getNearbyProducts, updateSellerLocation };
+/**
+ * Get all seller shops.
+ */
+const getAllShops = async (req, res) => {
+    try {
+        const { rows } = await pool.query(
+            `SELECT id, name, shop_name, latitude, longitude
+            FROM users
+            WHERE role = 'seller' AND suspended = false`
+        );
+        res.status(200).json({ success: true, shops: rows });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export { getNearByShop, getNearbyProducts, updateSellerLocation, getAllShops };

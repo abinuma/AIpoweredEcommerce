@@ -16,6 +16,7 @@ const sellerAuth = async (req,res,next) => {
     return res.status(401).json({success:false,message:"not authorized login again"})
  }
  req.userId = token_decoded.id;
+ req.role = rows[0].role;
  next();
     } catch (error) {
         return res.status(500).json({success:false,message:error.message})

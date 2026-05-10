@@ -190,20 +190,41 @@ const placeOrderRazorpay = async (req,res) =>{
 // All orders data for admin panel
 const allOrders = async (req,res) => {
     try {
-        const { rows } = await pool.query(
-          `SELECT
-            id AS "_id",
-            items,
-            amount,
-            address,
-            status,
-            payment_method AS "paymentMethod",
-            payment,
-            date
-          FROM orders
-          ORDER BY date DESC`,
-        );
-        res.json({success: true, orders: rows})
+        let ordersRows;
+        if (req.role === 'admin') {
+            const { rows } = await pool.query(
+              `SELECT
+                id AS "_id",
+                items,
+                amount,
+                address,
+                status,
+                payment_method AS "paymentMethod",
+                payment,
+                date
+              FROM orders
+              ORDER BY date DESC`
+            );
+            ordersRows = rows;
+        } else {
+            const { rows } = await pool.query(
+              `SELECT
+                id AS "_id",
+                items,
+                amount,
+                address,
+                status,
+                payment_method AS "paymentMethod",
+                payment,
+                date
+              FROM orders
+              WHERE seller_id = $1
+              ORDER BY date DESC`,
+              [req.userId]
+            );
+            ordersRows = rows;
+        }
+        res.json({success: true, orders: ordersRows})
     } catch (error) {
         console.log(error)
         res.json({success: false, message: error.message})
@@ -240,10 +261,17 @@ const userOrders = async (req,res) => {
 const updateStatus = async (req,res) => {
     try {
         const {orderId, status} = req.body;
-        await pool.query(
-          "UPDATE orders SET status = $2 WHERE id = $1",
-          [orderId, status],
-        );
+        if (req.role === 'admin') {
+            await pool.query(
+              "UPDATE orders SET status = $2 WHERE id = $1",
+              [orderId, status],
+            );
+        } else {
+            await pool.query(
+              "UPDATE orders SET status = $2 WHERE id = $1 AND seller_id = $3",
+              [orderId, status, req.userId],
+            );
+        }
         res.json({success: true, message: 'Status Updated'})
     } catch (error) {
         console.log(error)

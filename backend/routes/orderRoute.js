@@ -1,13 +1,14 @@
 import express from "express";
 import {placeOrder,placeOrderStripe,placeOrderRazorpay,allOrders,userOrders,updateStatus,verifyStripe } from "../controllers/orderController.js";
 import adminAuth from "../middleware/adminAuth.js";
+import sellerAuth from "../middleware/sellerAuth.js";
 import authUser, { isSuspended } from "../middleware/auth.js";
 
 const orderRouter = express.Router();
 
 //Admin features
-orderRouter.get("/list", adminAuth, allOrders);
-orderRouter.patch("/status", adminAuth, updateStatus);
+orderRouter.get("/list", sellerAuth, allOrders);
+orderRouter.patch("/status", sellerAuth, updateStatus);
 
 //payment features
 orderRouter.post("/place", authUser, isSuspended,placeOrder);

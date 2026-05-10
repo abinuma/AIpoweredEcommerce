@@ -12,7 +12,7 @@ const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     const { rows } = await pool.query(
-      "SELECT id, password FROM users WHERE email = $1 LIMIT 1",
+      "SELECT id, password, role FROM users WHERE email = $1 LIMIT 1",
       [email],
     );
     const user = rows[0];
@@ -24,7 +24,7 @@ const loginUser = async (req, res) => {
 
     if (isMatch) {
       const token = createToken(user.id);
-      res.json({ success: true, token });
+      res.json({ success: true, token, role: user.role });
     } else {
       res.json({ success: false, message: "Invalid credentials" });
     }
@@ -74,7 +74,7 @@ const registerUser = async (req, res) => {
     );
     const token = createToken(rows[0].id);
 
-    res.json({ success: true, token });
+    res.json({ success: true, token, role });
     console.log('role is:' + role +' \n email is:' + email)
   } catch (error) {
     console.log(error);
@@ -119,8 +119,8 @@ const adminLogin = async (req, res) => {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
-    if (user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: "Not authorized as admin" });
+    if (user.role !== 'admin' && user.role !== 'seller') {
+      return res.status(403).json({ success: false, message: "Not authorized as admin or seller" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);

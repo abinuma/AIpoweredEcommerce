@@ -11,13 +11,17 @@ const Navbar = () => {
     navigate,
     token,
     setToken,
+    role,
+    setRole,
     setCartItems,
   } = useContext(ShopContext);
 
   const logout = () => {
     navigate("/login");
     localStorage.removeItem("token");
+    localStorage.removeItem("role");
     setToken("");
+    setRole("");
     setCartItems({});
   };
 
@@ -30,6 +34,10 @@ const Navbar = () => {
       <ul className="hidden sm:flex gap-5 text-sm text-gray-700 mr-3">
         <NavLink to="/" className="flex flex-col items-center gap-1">
           <p>HOME</p>
+          <hr className="w-1/2 border-none h-[1.5px] bg-gray-700 hidden " />
+        </NavLink>
+        <NavLink to="/shops" className="flex flex-col items-center gap-1">
+          <p>SHOPS</p>
           <hr className="w-1/2 border-none h-[1.5px] bg-gray-700 hidden " />
         </NavLink>
         <NavLink to="/collection" className="flex flex-col items-center gap-1">
@@ -72,12 +80,21 @@ const Navbar = () => {
                 >
                   Orders
                 </p>
-                <p
-                  onClick={() => navigate("/seller-request")}
-                  className="cursor-pointer hover:text-black "
-                >
-                  Become a Seller
-                </p>
+                {role === 'seller' ? (
+                  <p
+                    onClick={() => window.open("http://localhost:5174", "_blank")}
+                    className="cursor-pointer hover:text-black "
+                  >
+                    Seller Panel
+                  </p>
+                ) : (
+                  <p
+                    onClick={() => navigate("/seller-request")}
+                    className="cursor-pointer hover:text-black "
+                  >
+                    Become a Seller
+                  </p>
+                )}
                 <p
                   onClick={logout}
                   className="cursor-pointer hover:text-black "
@@ -121,6 +138,13 @@ const Navbar = () => {
             to="/"
           >
             HOME
+          </NavLink>
+          <NavLink
+            onClick={() => setVisible(false)}
+            className="py-2 pl-6 border"
+            to="/shops"
+          >
+            SHOPS
           </NavLink>
           <NavLink
             onClick={() => setVisible(false)}
