@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes,Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import Collection from './pages/Collection'
 import PlaceOrder from './pages/PlaceOrder'
@@ -18,13 +18,18 @@ import Verify from './pages/Verify'
 import SellerRequest from './pages/SellerRequest'
 import ChatBot from './components/ChatBot'
 import Shops from './pages/Shops'
+import AdminApp from './admin/App'
+import SellerApp from './seller/SellerApp'
 
 const App = () => {
+  const location = useLocation();
+  const isPanelPath = location.pathname.startsWith('/admin') || location.pathname.startsWith('/seller');
+
   return (
-    <div className='px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
+    <div className={isPanelPath ? '' : 'px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'}>
       <ToastContainer />
-      <Navbar />
-      <SearchBar />
+      {!isPanelPath && <Navbar />}
+      {!isPanelPath && <SearchBar />}
       <Routes>
         <Route path='/' element={<Home/>}/>
         <Route path='/shops' element={<Shops/>}/>
@@ -38,9 +43,11 @@ const App = () => {
         <Route path='/orders' element={<Orders/>}/>
         <Route path='/verify' element={<Verify/>}/>
         <Route path='/seller-request' element={<SellerRequest/>}/>
+        <Route path='/admin/*' element={<AdminApp />} />
+        <Route path='/seller/*' element={<SellerApp />} />
       </Routes>
-      <Footer />
-      <ChatBot />
+      {!isPanelPath && <Footer />}
+      {!isPanelPath && <ChatBot />}
     </div>
   )
 }

@@ -241,9 +241,9 @@ describe('Route Tests', () => {
 
     it('POST /api/order/place - should place COD order', async () => {
       pool.query
-        .mockResolvedValueOnce({ rows: [{ id: 'order1' }] }) // Insert order
-        .mockResolvedValueOnce({ rows: [] }) // Insert order items
-        .mockResolvedValueOnce({ rows: [] }); // Delete cart items
+        .mockResolvedValueOnce({ rows: [{ id: 'prod1', seller_id: 'seller1', price: 100 }] }) // Product owner lookup
+        .mockResolvedValueOnce({ rows: [{ id: 'order1' }] }) // Insert seller order
+        .mockResolvedValueOnce({ rows: [] }); // Clear cart
 
       const response = await request(app)
         .post('/api/order/place')

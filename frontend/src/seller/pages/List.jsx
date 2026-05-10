@@ -1,9 +1,11 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
-import { backendUrl, currency } from "../App";
+import { useContext } from "react";
 import { toast } from "react-toastify";
+import { ShopContext } from "../../context/ShopContext";
 
 const List = ({ token }) => {
+  const {currency,backendUrl} = useContext(ShopContext)
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
   // -------- Pagination state
@@ -13,7 +15,7 @@ const List = ({ token }) => {
   const fetchList = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(backendUrl + "/api/product/admin-list", {
+      const response = await axios.get(backendUrl + "/api/product/list", {
         headers: { authorization: token },
       });
       if (response.data.success) {

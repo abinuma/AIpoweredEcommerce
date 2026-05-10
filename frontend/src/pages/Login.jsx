@@ -40,11 +40,12 @@ const Login = () => {
     }
   };
 
-  useEffect(()=> {
-    if(token){
-      navigate('/')
+  useEffect(() => {
+    if (token) {
+      const role = localStorage.getItem("role");
+      navigate("/");
     }
-  },[token])
+  }, [token]);
 
   return (
     <form

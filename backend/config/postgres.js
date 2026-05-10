@@ -52,6 +52,7 @@ const connectDB = async () => {
       bestseller boolean,
       date bigint NOT NULL
     );
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS seller_id uuid REFERENCES users(id) ON DELETE CASCADE;
 
     CREATE TABLE IF NOT EXISTS chat_sessions(
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -79,6 +80,7 @@ const connectDB = async () => {
       payment boolean NOT NULL DEFAULT false,
       date bigint NOT NULL
     );
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS seller_id uuid REFERENCES users(id) ON DELETE SET NULL;
 
     CREATE TABLE IF NOT EXISTS reviews (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -111,6 +113,8 @@ const connectDB = async () => {
     );
 
     CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+    CREATE INDEX IF NOT EXISTS idx_orders_seller_id ON orders(seller_id);
+    CREATE INDEX IF NOT EXISTS idx_products_seller_id ON products(seller_id);
     CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON reviews(product_id);
     CREATE INDEX IF NOT EXISTS idx_seller_location ON users(latitude, longitude) WHERE role = 'seller';
     CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages(session_id);

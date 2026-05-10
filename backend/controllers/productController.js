@@ -1,9 +1,13 @@
 import { v2 as cloudinary } from "cloudinary";
 import { pool } from "../config/postgres.js";
+import jwt from "jsonwebtoken";
 // function for add product
 
 const addProduct = async (req, res) => {
   try {
+    if (req.role === 'admin') {
+      return res.status(403).json({ success: false, message: "Admins cannot add products" });
+    }
     const {
       name,
       description,
@@ -13,7 +17,7 @@ const addProduct = async (req, res) => {
       sizes,
       bestseller,
     } = req.body;
-    const seller_id = req.body.seller_id || req.userId;
+    const seller_id = req.userId;
 
     const image1 = req.files.image1 && req.files.image1[0];
     const image2 = req.files.image2 && req.files.image2[0];
@@ -90,13 +94,31 @@ parsedSizes.sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
 // function for list products
 const listProducts = async (req, res) => {
   try {
-    const seller_id = req.query.seller_id || null;
+    let seller_id = req.query.seller_id || null;
+    const token = req.headers.authorization;
+
+    if (token) {
+      try {
+        const tokenDecoded = jwt.verify(token, process.env.JWT_SECRET);
+        const { rows } = await pool.query(
+          "SELECT role FROM users WHERE id=$1 LIMIT 1",
+          [tokenDecoded.id],
+        );
+        if (rows[0]?.role === "seller") {
+          seller_id = tokenDecoded.id;
+        }
+      } catch (error) {
+        return res.status(401).json({ success: false, message: "not authorized login again" });
+      }
+    }
+
     let productRows ;
     if (!seller_id) {
       const result = await pool.query(
       `SELECT
         id AS "_id",
         name,
+        seller_id,
         description,
         price,
         image,
@@ -114,6 +136,7 @@ const listProducts = async (req, res) => {
       `SELECT
         id AS "_id",
         name,
+        seller_id,
         description,
         price,
         image,
@@ -139,7 +162,16 @@ const listProducts = async (req, res) => {
 // function for removing product
 const removeProduct = async (req, res) => {
   try {
-    await pool.query("DELETE FROM products WHERE id = $1", [req.params.id]);
+    if (req.role === 'admin') {
+      return res.status(403).json({ success: false, message: "Admins cannot delete products" });
+    }
+    const { rowCount } = await pool.query(
+      "DELETE FROM products WHERE id = $1 AND seller_id = $2",
+      [req.params.id, req.userId]
+    );
+    if (rowCount === 0) {
+      return res.status(403).json({ success: false, message: "You can only delete your own products" });
+    }
     res.json({ success: true, message: "Product removed" });
   } catch (error) {
     console.log(error);
@@ -155,6 +187,7 @@ const singleProduct = async (req, res) => {
       `SELECT
         id AS "_id",
         name,
+        seller_id,
         description,
         price,
         image,
@@ -175,5 +208,28 @@ const singleProduct = async (req, res) => {
   }
 };
 
-export { listProducts, addProduct, removeProduct, singleProduct };
+// function for admin/seller product list
+const adminListProducts = async (req, res) => {
+  try {
+    let result;
+    if (req.role === 'admin') {
+      result = await pool.query(
+        `SELECT id AS "_id", seller_id, name, description, price, image, category, sub_category AS "subCategory", sizes, bestseller, date
+         FROM products ORDER BY date DESC`
+      );
+    } else {
+      result = await pool.query(
+        `SELECT id AS "_id", seller_id, name, description, price, image, category, sub_category AS "subCategory", sizes, bestseller, date
+         FROM products WHERE seller_id = $1 ORDER BY date DESC`,
+        [req.userId]
+      );
+    }
+    res.json({ success: true, products: result.rows });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+export { listProducts, addProduct, removeProduct, singleProduct, adminListProducts };
 

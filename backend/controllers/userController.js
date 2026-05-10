@@ -11,6 +11,29 @@ const createToken = (id) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    // Check if it's the admin from ENV
+    if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+        let { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+        let adminUser = rows[0];
+        
+        if (!adminUser) {
+             const salt = await bcrypt.genSalt(10);
+             const hashedPassword = await bcrypt.hash(password, salt);
+             const result = await pool.query(
+                 "INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, 'admin') RETURNING *",
+                 ['Admin', email, hashedPassword]
+             );
+             adminUser = result.rows[0];
+        } else if (adminUser.role !== 'admin') {
+             await pool.query("UPDATE users SET role = 'admin' WHERE id = $1", [adminUser.id]);
+             adminUser.role = 'admin';
+        }
+        
+        const token = createToken(adminUser.id);
+        return res.json({ success: true, token, role: 'admin' });
+    }
+
     const { rows } = await pool.query(
       "SELECT id, password, role FROM users WHERE email = $1 LIMIT 1",
       [email],

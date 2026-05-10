@@ -10,27 +10,82 @@ const deliveryCharge = 10;
 //getway intialize
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// placing orders using COD method
+const getItemProductId = (item) => item._id || item.id || item.productId;
 
-const placeOrder = async (req,res) => {
-    try {
-        const userId = req.userId;
-        const {items, amount, address} = req.body;
+const getSellerOrderGroups = async (items, amount) => {
+    if (!Array.isArray(items) || items.length === 0) {
+        throw new Error("Order must include at least one product");
+    }
 
-        // Get seller_id from the first item's product
-        let sellerId = null;
-        if (items && items.length > 0) {
-            const itemId = items[0]._id || items[0].id || items[0].productId;
-            if (itemId) {
-                const { rows: productRows } = await pool.query(
-                    "SELECT seller_id FROM products WHERE id = $1 LIMIT 1",
-                    [itemId]
-                );
-                sellerId = productRows[0]?.seller_id || null;
-            }
+    const productIds = [...new Set(items.map(getItemProductId).filter(Boolean))];
+    if (productIds.length !== items.length && productIds.length === 0) {
+        throw new Error("Order items must include product ids");
+    }
+
+    const { rows: products } = await pool.query(
+        "SELECT id, seller_id, price FROM products WHERE id = ANY($1::uuid[])",
+        [productIds]
+    );
+    const productById = new Map(products.map((product) => [String(product.id), product]));
+    const groupsBySeller = new Map();
+    let subtotal = 0;
+
+    for (const item of items) {
+        const productId = getItemProductId(item);
+        const product = productById.get(String(productId));
+        if (!product) {
+            throw new Error(`Product not found for order item: ${productId}`);
+        }
+        if (!product.seller_id) {
+            throw new Error(`Product has no seller owner: ${productId}`);
         }
 
-        await pool.query(
+        const quantity = Number(item.quantity) || 0;
+        const unitPrice = Number(item.price ?? product.price) || 0;
+        const itemTotal = unitPrice * quantity;
+        subtotal += itemTotal;
+
+        const sellerId = String(product.seller_id);
+        if (!groupsBySeller.has(sellerId)) {
+            groupsBySeller.set(sellerId, { sellerId, items: [], subtotal: 0 });
+        }
+
+        const group = groupsBySeller.get(sellerId);
+        group.items.push({ ...item, seller_id: sellerId });
+        group.subtotal += itemTotal;
+    }
+
+    const deliveryTotal = Math.max((Number(amount) || 0) - subtotal, 0);
+    const totalAmount = Number(amount) || subtotal + deliveryTotal;
+    const groups = Array.from(groupsBySeller.values());
+    let allocatedAmount = 0;
+
+    return groups.map((group, index) => {
+        const deliveryShare =
+            deliveryTotal > 0
+                ? subtotal > 0
+                    ? deliveryTotal * (group.subtotal / subtotal)
+                    : deliveryTotal / groups.length
+                : 0;
+        const groupAmount =
+            index === groups.length - 1
+                ? Number((totalAmount - allocatedAmount).toFixed(2))
+                : Number((group.subtotal + deliveryShare).toFixed(2));
+        allocatedAmount += groupAmount;
+
+        return {
+            sellerId: group.sellerId,
+            items: group.items,
+            amount: groupAmount,
+        };
+    });
+};
+
+const insertSellerOrders = async ({ userId, groups, address, paymentMethod, payment }) => {
+    const orderIds = [];
+
+    for (const group of groups) {
+        const { rows: inserted } = await pool.query(
           `INSERT INTO orders(
             user_id,
             seller_id,
@@ -40,18 +95,39 @@ const placeOrder = async (req,res) => {
             payment_method,
             payment,
             date
-          ) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
+          ) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
           [
             userId,
-            sellerId,
-            JSON.stringify(items),
+            group.sellerId,
+            JSON.stringify(group.items),
             JSON.stringify(address),
-            amount,
-            "COD",
-            false,
+            group.amount,
+            paymentMethod,
+            payment,
             Date.now(),
           ],
         );
+        orderIds.push(inserted[0].id);
+    }
+
+    return orderIds;
+};
+
+// placing orders using COD method
+
+const placeOrder = async (req,res) => {
+    try {
+        const userId = req.userId;
+        const {items, amount, address} = req.body;
+
+        const groups = await getSellerOrderGroups(items, amount);
+        await insertSellerOrders({
+            userId,
+            groups,
+            address,
+            paymentMethod: "COD",
+            payment: false,
+        });
 
         await pool.query(
           "UPDATE users SET cart_data = '{}'::jsonb WHERE id = $1",
@@ -72,42 +148,14 @@ const placeOrderStripe = async (req,res) => {
         const {items, amount, address} = req.body;
         const {origin} = req.headers;
 
-        // Get seller_id from the first item's product
-        let sellerId = null;
-        if (items && items.length > 0) {
-            const itemId = items[0]._id || items[0].id || items[0].productId;
-            if (itemId) {
-                const { rows: productRows } = await pool.query(
-                    "SELECT seller_id FROM products WHERE id = $1 LIMIT 1",
-                    [itemId]
-                );
-                sellerId = productRows[0]?.seller_id || null;
-            }
-        }
-
-        const { rows: inserted } = await pool.query(
-          `INSERT INTO orders(
-            user_id,
-            seller_id,
-            items,
-            address,
-            amount,
-            payment_method,
-            payment,
-            date
-          ) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-          [
+        const groups = await getSellerOrderGroups(items, amount);
+        const orderIds = await insertSellerOrders({
             userId,
-            sellerId,
-            JSON.stringify(items),
-            JSON.stringify(address),
-            amount,
-            "Stripe",
-            false,
-            Date.now(),
-          ],
-        );
-        const orderId = inserted[0].id;
+            groups,
+            address,
+            paymentMethod: "Stripe",
+            payment: false,
+        });
 
         const line_items = items.map((item)=>({
             price_data : {
@@ -133,8 +181,8 @@ const placeOrderStripe = async (req,res) => {
         })
 
         const session = await stripe.checkout.sessions.create({
-            success_url: `${origin}/verify?success=true&orderId=${orderId}`,
-            cancel_url: `${origin}/verify?success=false&orderId=${orderId}`,
+            success_url: `${origin}/verify?success=true&orderId=${orderIds.join(",")}`,
+            cancel_url: `${origin}/verify?success=false&orderId=${orderIds.join(",")}`,
             line_items,
             mode: 'payment'
         })
@@ -153,10 +201,19 @@ const verifyStripe = async (req,res) => {
     const userId = req.userId;
     const {success, orderId} = req.body;
     try {
+        const orderIds = String(orderId || "")
+            .split(",")
+            .map((id) => id.trim())
+            .filter(Boolean);
+
+        if (orderIds.length === 0) {
+            return res.json({success: false, message: "Order id is required"});
+        }
+
         if (success === "true") {
             await pool.query(
-              "UPDATE orders SET payment = true WHERE id = $1 AND user_id = $2",
-              [orderId, userId],
+              "UPDATE orders SET payment = true WHERE id = ANY($1::uuid[]) AND user_id = $2",
+              [orderIds, userId],
             );
             await pool.query(
               "UPDATE users SET cart_data = '{}'::jsonb WHERE id = $1",
@@ -165,8 +222,8 @@ const verifyStripe = async (req,res) => {
             res.json({success: true});
         } else{
             await pool.query(
-              "DELETE FROM orders WHERE id = $1 AND user_id = $2",
-              [orderId, userId],
+              "DELETE FROM orders WHERE id = ANY($1::uuid[]) AND user_id = $2",
+              [orderIds, userId],
             );
             res.json({success: false})
         }

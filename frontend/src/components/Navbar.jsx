@@ -82,10 +82,17 @@ const Navbar = () => {
                 </p>
                 {role === 'seller' ? (
                   <p
-                    onClick={() => window.open("http://localhost:5174", "_blank")}
+                    onClick={() => navigate("/seller/add")}
                     className="cursor-pointer hover:text-black "
                   >
                     Seller Panel
+                  </p>
+                ) : role === 'admin' ? (
+                  <p
+                    onClick={() => navigate("/admin/add")}
+                    className="cursor-pointer hover:text-black "
+                  >
+                    Admin Panel
                   </p>
                 ) : (
                   <p

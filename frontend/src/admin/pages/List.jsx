@@ -13,7 +13,7 @@ const List = ({ token }) => {
   const fetchList = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(backendUrl + "/api/product/admin-list", {
+      const response = await axios.get(backendUrl + "/api/product/list", {
         headers: { authorization: token },
       });
       if (response.data.success) {
@@ -105,12 +105,11 @@ const List = ({ token }) => {
       ) : (
         <div>
           {/* ---------List table title */}
-          <div className="hidden md:grid grid-cols-[1fr_3fr_1fr_1fr_1fr] items-center py-1 px-2 border bg-gray-100 text-sm ">
+          <div className="hidden md:grid grid-cols-[1fr_3fr_1fr_1fr] items-center py-1 px-2 border bg-gray-100 text-sm ">
             <b>Image</b>
             <b>Name</b>
             <b>Category</b>
             <b>Price</b>
-            <b className="text-center">Action</b>
           </div>
 
           {/* -----Product List ------ */}
@@ -119,8 +118,8 @@ const List = ({ token }) => {
             <div
               className="
     grid 
-    grid-cols-[80px_1fr_auto]      /* mobile: image + name + actions */
-    md:grid-cols-[1fr_3fr_1fr_1fr_1fr]
+    grid-cols-[1fr]      /* mobile: image + name */
+    md:grid-cols-[1fr_3fr_1fr_1fr]
     items-center 
     gap-3 py-3 px-2 border-b text-sm
   "
@@ -158,20 +157,6 @@ const List = ({ token }) => {
                 {item.price}
               </p>
 
-              {/* Delete button – always visible, better alignment */}
-              <div className="justify-self-end md:justify-self-center">
-                <button
-                  onClick={() => removeProduct(item._id)}
-                  className="
-        text-gray-500 hover:text-red-600 
-        text-xl md:text-lg font-bold
-        px-2 py-1 -mr-1 md:mr-0
-      "
-                  title="Remove product"
-                >
-                  X
-                </button>
-              </div>
             </div>
           ))}
           {/* ---------- Pagination Controls ---------- */}
