@@ -1,25 +1,215 @@
+const DEFAULT_GEMINI_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_URL = process.env.GEMINI_URL;
+const STOP_WORDS = new Set([
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "for",
+  "to",
+  "of",
+  "in",
+  "on",
+  "with",
+  "show",
+  "find",
+  "search",
+  "looking",
+  "look",
+  "need",
+  "want",
+  "please",
+  "me",
+  "i",
+  "my",
+  "you",
+  "your",
+  "product",
+  "products",
+  "item",
+  "items",
+]);
+
+const SYNONYMS = {
+  cheap: ["affordable", "budget", "low price", "inexpensive", "value"],
+  modern: ["contemporary", "minimal", "sleek", "stylish"],
+  office: ["work", "desk", "professional"],
+  hoodie: ["sweatshirt", "pullover", "hooded"],
+  jacket: ["coat", "outerwear", "winterwear"],
+  chair: ["seat", "seating"],
+  cotton: ["soft", "breathable", "fabric"],
+  oversized: ["relaxed", "loose", "baggy"],
+};
+
+const parseJsonFromText = (text) => {
+  if (!text) return null;
+  const cleaned = text
+    .replace(/```json\n?/g, "")
+    .replace(/```\n?/g, "")
+    .trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (error) {
+    const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+    const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+    const jsonText = objectMatch?.[0] || arrayMatch?.[0];
+    if (!jsonText) throw error;
+    return JSON.parse(jsonText);
+  }
+};
+
+export const getSearchIntent = (query = "") => {
+  const normalized = query.toLowerCase();
+  const tokens = normalized
+    .split(/[^a-z0-9]+/)
+    .map((word) => word.trim())
+    .filter((word) => word.length >= 2 && !STOP_WORDS.has(word));
+
+  const terms = new Set(tokens);
+  for (const token of tokens) {
+    for (const synonym of SYNONYMS[token] || []) {
+      synonym.split(/\s+/).forEach((word) => terms.add(word));
+    }
+  }
+
+  let maxPrice = null;
+  const underMatch = normalized.match(
+    /\b(?:under|below|less than|max|maximum)\s*\$?\s*(\d+(?:\.\d+)?)/,
+  );
+  if (underMatch) maxPrice = Number(underMatch[1]);
+  if (
+    ["cheap", "affordable", "budget", "inexpensive"].some((word) =>
+      normalized.includes(word),
+    )
+  ) {
+    maxPrice = maxPrice || 50;
+  }
+
+  let minPrice = null;
+  if (
+    ["premium", "luxury", "high end", "expensive"].some((word) =>
+      normalized.includes(word),
+    )
+  ) {
+    minPrice = 75;
+  }
+
+  const categories = [];
+  if (/\bmen'?s?\b|\bmale\b/.test(normalized)) categories.push("Men");
+  if (/\bwomen'?s?\b|\bfemale\b|\bladies\b/.test(normalized)) {
+    categories.push("Women");
+  }
+  if (/\bkids?\b|\bchildren\b|\bchild\b/.test(normalized)) {
+    categories.push("Kids");
+  }
+
+  const subCategories = [];
+  if (/\btop|shirt|hoodie|jacket|coat|sweater|blouse\b/.test(normalized)) {
+    subCategories.push("Topwear");
+  }
+  if (/\bbottom|pants|trouser|jeans|shorts|skirt\b/.test(normalized)) {
+    subCategories.push("Bottomwear");
+  }
+  if (/\bwinter|warm|jacket|coat|sweater\b/.test(normalized)) {
+    subCategories.push("Winterwear");
+  }
+
+  return {
+    original: query,
+    terms: [...terms],
+    maxPrice,
+    minPrice,
+    categories,
+    subCategories,
+  };
+};
+
+export const scoreProductForIntent = (product, intent) => {
+  const productSubCategory = product.sub_category || product.subCategory;
+  const haystack = [
+    product.name,
+    product.description,
+    product.category,
+    productSubCategory,
+    product.seller_name,
+    product.seller_shop,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  let score = 0;
+  for (const term of intent.terms || []) {
+    if (!term) continue;
+    if ((product.name || "").toLowerCase().includes(term)) score += 8;
+    else if (haystack.includes(term)) score += 3;
+  }
+
+  if (intent.categories?.includes(product.category)) score += 6;
+  if (intent.subCategories?.includes(productSubCategory)) score += 5;
+  if (intent.maxPrice && Number(product.price) <= intent.maxPrice) score += 4;
+  if (intent.minPrice && Number(product.price) >= intent.minPrice) score += 3;
+  if (product.bestseller) score += 1;
+
+  return score;
+};
+
+const localProductDescription = ({ name, category, subCategory, sizes, price, keywords }) => {
+  const cleanName = name || "This product";
+  const sizeText =
+    Array.isArray(sizes) && sizes.length > 0
+      ? ` Available in ${sizes.join(", ")}.`
+      : "";
+  const priceText = price
+    ? ` At $${price}, it is positioned for shoppers who want style and everyday value.`
+    : "";
+  const notes = keywords ? ` Seller notes: ${keywords}.` : "";
+
+  return {
+    description:
+      `${cleanName} is a versatile ${category || "fashion"} item${
+        subCategory ? ` in the ${subCategory.toLowerCase()} range` : ""
+      }, designed for customers who want comfort, easy styling, and dependable everyday wear.${notes}${priceText}\n\nIts clean look makes it simple to pair with different outfits, while the product details help it stand out in search for shoppers browsing quality ${
+        category || "fashion"
+      } pieces.${sizeText}`,
+    highlights: [
+      "Comfort-focused everyday design",
+      "SEO-friendly product copy",
+      "Easy to style for multiple occasions",
+    ],
+  };
+};
 
 export const generateAIResponse = async (prompt) => {
   try {
-    if (!GEMINI_API_KEY) {
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    const geminiUrl = process.env.GEMINI_URL || DEFAULT_GEMINI_URL;
+
+    if (!geminiApiKey) {
       console.log("GEMINI_API_KEY is not set in environment variables");
       return null;
     }
 
-    // Construct full URL if GEMINI_URL is just the base origin
-    const baseUrl = GEMINI_URL.endsWith('/') ? GEMINI_URL.slice(0, -1) : GEMINI_URL;
-    const url = baseUrl.includes('/v1beta/models/') 
-      ? baseUrl 
-      : `${baseUrl}/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const baseUrl = geminiUrl.endsWith("/") ? geminiUrl.slice(0, -1) : geminiUrl;
+    const modelUrl = baseUrl.includes("/v1beta/models/")
+      ? baseUrl
+      : `${baseUrl}/v1beta/models/gemini-2.0-flash:generateContent`;
+    const url = modelUrl.includes("key=")
+      ? modelUrl
+      : `${modelUrl}${modelUrl.includes("?") ? "&" : "?"}key=${geminiApiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.35,
+          topP: 0.9,
+        },
       }),
     });
 
@@ -27,69 +217,70 @@ export const generateAIResponse = async (prompt) => {
       let bodyText = "<failed to read body>";
       try {
         bodyText = await response.text();
-      } catch (e) {
-        console.log("Failed to read Gemini error body:", e.message);
+      } catch (error) {
+        console.log("Failed to read Gemini error body:", error.message);
       }
-      console.log(
-        `Gemini API error: ${response.status} ${response.statusText}`,
-      );
+      console.log(`Gemini API error: ${response.status} ${response.statusText}`);
       console.log("Gemini response body:", bodyText);
       return null;
     }
 
     const data = await response.json();
-    // If model returned an unexpected structure, log the full JSON for debugging
-    if (!data) {
-      console.log("Gemini returned empty JSON response");
-      return null;
-    }
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
-      console.log(
-        "Gemini response missing expected candidates/content/parts/text. Full response:",
-        JSON.stringify(data, null, 2),
-      );
+      console.log("Gemini response missing text:", JSON.stringify(data, null, 2));
     }
     return text || null;
   } catch (error) {
     console.log("AI Service error:", error.stack || error.message);
+    return null;
   }
 };
 
-/**
- * Summarize product reviews using AI.
- * Takes an array of { rating, comment } objects.
- * Returns { summary, pros, cons } or null on failure.
- */
 export const summarizeReviews = async (reviews) => {
   try {
+    if (!reviews || reviews.length === 0) return null;
+
     const reviewList = reviews
-      .map((r, i) => `Review ${i + 1} (${r.rating}/5 stars): ${r.comment}`)
+      .map((review, index) => {
+        return `Review ${index + 1} (${review.rating}/5 stars): ${review.comment}`;
+      })
       .join("\n");
 
-    const prompt = `You are a helpful product review analyzer. Below are customer reviews for a product. 
-Analyze them and provide a structured summary.
+    const prompt = `You are a helpful product review analyzer. Summarize customer reviews for an e-commerce product.
 
 Reviews:
 ${reviewList}
 
-Respond ONLY with valid JSON in this exact format (no markdown, no code fences):
+Respond ONLY with valid JSON:
 {
-  "summary": "A concise 2-3 sentence overall summary of what customers think about this product",
+  "summary": "A concise 2-3 sentence overall summary",
   "pros": ["pro 1", "pro 2", "pro 3"],
   "cons": ["con 1", "con 2"]
 }`;
 
     const text = await generateAIResponse(prompt);
-    if (!text) return null;
+    if (!text) {
+      const positive = reviews.filter((review) => Number(review.rating) >= 4);
+      const critical = reviews.filter((review) => Number(review.rating) <= 3);
+      return {
+        summary: `Customers left ${reviews.length} written reviews. ${
+          positive.length >= critical.length
+            ? "Overall feedback is positive, with shoppers highlighting useful qualities and a good buying experience."
+            : "Feedback is mixed, with some shoppers raising concerns future buyers should consider."
+        }`,
+        pros: positive
+          .filter((review) => review.comment)
+          .slice(0, 3)
+          .map((review) => review.comment.split(".")[0].slice(0, 90)),
+        cons: critical
+          .filter((review) => review.comment)
+          .slice(0, 2)
+          .map((review) => review.comment.split(".")[0].slice(0, 90)),
+      };
+    }
 
-    // Clean up response — strip markdown code fences if present
-    const cleaned = text
-      .replace(/```json\n?/g, "")
-      .replace(/```\n?/g, "")
-      .trim();
-    const parsed = JSON.parse(cleaned);
-
+    const parsed = parseJsonFromText(text);
     return {
       summary: parsed.summary || "",
       pros: Array.isArray(parsed.pros) ? parsed.pros : [],
@@ -101,37 +292,29 @@ Respond ONLY with valid JSON in this exact format (no markdown, no code fences):
   }
 };
 
-/**
- * Rank products by relevance to a search query using AI.
- * Returns an array of product indices (1-based) ordered by relevance, or null on failure.
- */
 export const rankProductByRelevance = async (query, products) => {
   try {
+    if (!Array.isArray(products) || products.length === 0) return null;
+
     const productList = products
-      .map(
-        (p, i) =>
-          `Product ${i + 1}: ${p.name} — ${p.description?.substring(0, 80) || ""}`,
-      )
+      .map((product, index) => {
+        return `Product ${index + 1}: ID ${product.id}, ${product.name}, ${product.category}/${product.sub_category || product.subCategory}, $${product.price}. ${product.description?.substring(0, 120) || ""}`;
+      })
       .join("\n");
 
-    const prompt = `You are a product search ranking engine. A customer searched for: "${query}".
-Here are the candidate products:
+    const prompt = `You are an e-commerce semantic search ranking engine.
+Customer query: "${query}"
+
+Candidate products:
 ${productList}
 
-Rank these products by relevance to the search query. Return ONLY a JSON array of product numbers ordered by most relevant first. Exclude any completely irrelevant products.
-Example: [3, 1, 2]
-
-Respond ONLY with the JSON array (no markdown, no code fences):`;
+Understand intent, style, price preference, category, and use-case. Return ONLY a JSON array of product numbers ordered by relevance. Exclude completely irrelevant products.
+Example: [3, 1, 2]`;
 
     const text = await generateAIResponse(prompt);
     if (!text) return null;
 
-    const cleaned = text
-      .replace(/```json\n?/g, "")
-      .replace(/```\n?/g, "")
-      .trim();
-    const parsed = JSON.parse(cleaned);
-
+    const parsed = parseJsonFromText(text);
     return Array.isArray(parsed) ? parsed : null;
   } catch (error) {
     console.log("Product ranking error:", error.message);
@@ -139,51 +322,42 @@ Respond ONLY with the JSON array (no markdown, no code fences):`;
   }
 };
 
-/**
- * Generate a product description using AI.
- * Returns { description, highlights } or null on failure.
- */
 export const generateProductDescription = async (productInfo) => {
   try {
     const { name, category, subCategory, sizes, price, keywords } = productInfo;
 
-    const prompt = `You are an expert e-commerce copywriter. Write a professional, engaging product description.
+    const prompt = `You are an expert e-commerce copywriter and SEO specialist.
 
-Product details:
+Create marketing-ready product copy from these seller inputs:
 - Name: ${name}
-- Category: ${category}${subCategory ? `, Sub-category: ${subCategory}` : ""}${price ? `, Price: $${price}` : ""}${sizes ? `, Available sizes: ${JSON.stringify(sizes)}` : ""}${keywords ? `\n- Key features/notes from seller: ${keywords}` : ""}
+- Category: ${category}
+- Sub-category: ${subCategory || "Not specified"}
+- Price: ${price || "Not specified"}
+- Sizes: ${Array.isArray(sizes) ? sizes.join(", ") : sizes || "Not specified"}
+- Seller notes/features: ${keywords || "Not specified"}
 
-Write a compelling 2-3 paragraph product description that highlights key features, mentions the target audience, and uses SEO-friendly language.
+Write a professional description for shoppers, with natural SEO keywords. Use a confident, polished tone.
 
-Respond ONLY with valid JSON in this exact format (no markdown, no code fences):
+Respond ONLY with valid JSON:
 {
-  "description": "The full product description text here",
+  "description": "2 short paragraphs of professional marketing and SEO-friendly copy",
   "highlights": ["key feature 1", "key feature 2", "key feature 3"]
 }`;
 
     const text = await generateAIResponse(prompt);
-    if (!text) return null;
+    if (!text) return localProductDescription(productInfo);
 
-    const cleaned = text
-      .replace(/```json\n?/g, "")
-      .replace(/```\n?/g, "")
-      .trim();
-    const parsed = JSON.parse(cleaned);
-
+    const parsed = parseJsonFromText(text);
     return {
       description: parsed.description || "",
       highlights: Array.isArray(parsed.highlights) ? parsed.highlights : [],
     };
   } catch (error) {
     console.log("Product description generation error:", error.message);
-    return null;
+    return localProductDescription(productInfo);
   }
 };
 
-/**
- * Regenerate a product description with seller refinement instructions.
- * Returns { description, highlights } or null on failure.
- */
 export const regenerateProductDescription = async (
   productInfo,
   currentDescription,
@@ -192,182 +366,120 @@ export const regenerateProductDescription = async (
   try {
     const { name, category } = productInfo;
 
-    const prompt = `You are an expert e-commerce copywriter. Here is the current product description for "${name}" (${category}):
-
+    const prompt = `You are an expert e-commerce copywriter.
+Current product description for "${name}" (${category}):
 "${currentDescription}"
 
-The seller wants you to: ${instruction}
+Seller instruction: ${instruction}
 
-Rewrite the description accordingly. Keep it professional and SEO-friendly.
+Rewrite it professionally and keep it SEO-friendly.
 
-Respond ONLY with valid JSON in this exact format (no markdown, no code fences):
+Respond ONLY with valid JSON:
 {
-  "description": "The rewritten product description text here",
+  "description": "rewritten product description",
   "highlights": ["key feature 1", "key feature 2", "key feature 3"]
 }`;
 
     const text = await generateAIResponse(prompt);
-    if (!text) return null;
+    if (!text) return localProductDescription({ ...productInfo, keywords: instruction });
 
-    const cleaned = text
-      .replace(/```json\n?/g, "")
-      .replace(/```\n?/g, "")
-      .trim();
-    const parsed = JSON.parse(cleaned);
-
+    const parsed = parseJsonFromText(text);
     return {
       description: parsed.description || "",
       highlights: Array.isArray(parsed.highlights) ? parsed.highlights : [],
     };
   } catch (error) {
     console.log("Product description regeneration error:", error.message);
-    return null;
+    return localProductDescription({ ...productInfo, keywords: instruction });
   }
 };
 
-/**
- * Chat with AI using conversation history and product context.
- * Returns { reply, suggestedProducts } or a fallback on failure.
- */
+const getLocalChatResponse = (userMessage, products) => {
+  const intent = getSearchIntent(userMessage);
+  const scored = products
+    .map((product) => ({
+      ...product,
+      _score: scoreProductForIntent(product, intent),
+    }))
+    .filter((product) => product._score > 0)
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 5);
+
+  if (scored.length > 0) {
+    const names = scored.map((product) => product.name).join(", ");
+    return {
+      reply: `I found ${scored.length} product${scored.length === 1 ? "" : "s"} that match your request: ${names}. Open any suggestion below to view details.`,
+      suggestedProducts: scored.map((product) => String(product.id)),
+    };
+  }
+
+  return {
+    reply:
+      "I can help you search by style, category, price, or product name. Try something like 'cheap modern hoodie', 'women winter jacket under 80', or 'cotton topwear'.",
+    suggestedProducts: [],
+  };
+};
+
 export const chatWithContext = async (
   userMessage,
   conversationHistory,
-  productContext,
+  products = [],
 ) => {
   try {
-    let historyText = "";
-    if (conversationHistory && conversationHistory.length > 0) {
-      historyText =
-        "\n\nConversation so far:\n" +
-        conversationHistory.map((m) => `${m.role}: ${m.content}`).join("\n");
-    }
+    const productContext = products
+      .slice(0, 20)
+      .map((product) => {
+        return `ID: ${product.id}; Name: ${product.name}; Category: ${product.category}/${product.sub_category || product.subCategory}; Price: $${product.price}; Description: ${product.description?.substring(0, 160) || ""}`;
+      })
+      .join("\n");
 
-    const prompt = `You are a helpful shopping assistant for an online multi-vendor e-commerce store. You help customers find products, answer questions about products, and provide recommendations.
+    const historyText =
+      conversationHistory && conversationHistory.length > 0
+        ? conversationHistory.map((message) => `${message.role}: ${message.content}`).join("\n")
+        : "No previous messages.";
 
-Here are some products currently available in the store:
-${productContext || "No products loaded yet."}
+    const prompt = `You are a helpful shopping assistant for a multi-vendor e-commerce store.
+
+Available product context:
+${productContext || "No products loaded."}
+
+Conversation:
 ${historyText}
 
 Customer: ${userMessage}
 
 Instructions:
-- Respond naturally and helpfully
-- If the customer asks about a product, reference actual products from the list above
-- If the product isn't in the store, say so honestly
-- Keep responses concise (2-4 sentences)
+- Understand intent, style, category, and price preference.
+- Recommend only products from the product context.
+- If no exact match exists, suggest the closest useful products and explain briefly.
+- Keep the reply concise.
 
-Respond ONLY with valid JSON (no markdown, no code fences):
+Respond ONLY with valid JSON:
 {
-  "reply": "Your response to the customer",
+  "reply": "assistant reply",
   "suggestedProducts": ["product_id_1", "product_id_2"]
-}
-The suggestedProducts array should contain product IDs from the list above that are relevant. Leave it empty if no specific products are being recommended.`;
+}`;
 
     const text = await generateAIResponse(prompt);
     if (text) {
       try {
-        const cleaned = text
-          .replace(/```json\n?/g, "")
-          .replace(/```\n?/g, "")
-          .trim();
-        const parsed = JSON.parse(cleaned);
+        const parsed = parseJsonFromText(text);
         return {
-          reply:
-            parsed.reply ||
-            "I'm sorry, I couldn't process that. Please try again.",
+          reply: parsed.reply || "I found a few options you may like.",
           suggestedProducts: Array.isArray(parsed.suggestedProducts)
-            ? parsed.suggestedProducts
+            ? parsed.suggestedProducts.map(String)
             : [],
         };
-      } catch (parseErr) {
-        console.log(
-          "AI returned non-JSON or unparsable response:",
-          parseErr.message,
-        );
-        // fall through to local fallback below
+      } catch (error) {
+        console.log("AI returned unparsable chat JSON:", error.message);
       }
     }
 
-    // --- Local fallback when external AI is unavailable or returns invalid JSON ---
-    // Try simple keyword matching against the provided productContext string.
-    try {
-      const fallbackReplyPrefix =
-        "I couldn't reach the AI right now, but I can help with product search:\n";
-      const lines = (productContext || "")
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter(Boolean);
-      const products = [];
-      for (const line of lines) {
-        // Expect lines like: "Product: NAME, Category: CAT, Price: $X, Description: ..., ID: id"
-        const idMatch =
-          line.match(/ID:\s*(\d+)/i) || line.match(/ID:\s*([a-f0-9\-]{6,})/i);
-        const nameMatch = line.match(/Product:\s*([^,]+),/i);
-        const catMatch = line.match(/Category:\s*([^,]+),/i);
-        if (idMatch && nameMatch) {
-          products.push({
-            id: idMatch[1],
-            name: nameMatch[1].trim(),
-            category: (catMatch && catMatch[1]) || "",
-          });
-        }
-      }
-
-      // keyword extraction from userMessage
-      const words = userMessage
-        .toLowerCase()
-        .split(/\s+/)
-        .map((w) => w.replace(/[^a-z0-9]/g, ""))
-        .filter((w) => w.length >= 3);
-      const matches = [];
-      for (const p of products) {
-        const lowName = p.name.toLowerCase();
-        const lowCat = (p.category || "").toLowerCase();
-        for (const w of words) {
-          if (lowName.includes(w) || lowCat.includes(w)) {
-            matches.push(p);
-            break;
-          }
-        }
-      }
-
-      if (matches.length > 0) {
-        const unique = [];
-        const ids = new Set();
-        for (const m of matches) {
-          if (!ids.has(m.id)) {
-            ids.add(m.id);
-            unique.push(m);
-          }
-        }
-        const names = unique
-          .slice(0, 5)
-          .map((p) => p.name)
-          .join(", ");
-        const suggested = unique.slice(0, 5).map((p) => p.id);
-        return {
-          reply: `${fallbackReplyPrefix}I found these matching products: ${names}. Would you like to view any of them?`,
-          suggestedProducts: suggested,
-        };
-      }
-
-      // No product matches — provide a generic helpful fallback
-      return {
-        reply:
-          "I couldn't reach the AI right now. Try asking about product categories (for example: 'show me men's jackets') or mention a product name and I'll search for it.",
-        suggestedProducts: [],
-      };
-    } catch (fbErr) {
-      console.log("Fallback error:", fbErr.message);
-      return {
-        reply: "I'm sorry, I couldn't process that. Please try again.",
-        suggestedProducts: [],
-      };
-    }
+    return getLocalChatResponse(userMessage, products);
   } catch (error) {
     console.log("Chat with context error:", error.message);
     return {
-      reply: "I'm sorry, I couldn't process that. Please try again.",
+      reply: "Sorry, I couldn't process that. Please try again.",
       suggestedProducts: [],
     };
   }

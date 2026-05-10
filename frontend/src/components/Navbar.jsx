@@ -89,7 +89,7 @@ const Navbar = () => {
                   </p>
                 ) : role === 'admin' ? (
                   <p
-                    onClick={() => navigate("/admin/add")}
+                    onClick={() => navigate("/admin/list")}
                     className="cursor-pointer hover:text-black "
                   >
                     Admin Panel

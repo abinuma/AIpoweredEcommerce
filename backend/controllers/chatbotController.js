@@ -1,22 +1,5 @@
 import { pool } from "../config/postgres.js";
-import { chatWithContext } from "../services/aiService.js";
-
-// Common stop words to filter out when extracting keywords from messages
-const STOP_WORDS = new Set([
-    "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-    "have", "has", "had", "do", "does", "did", "will", "would", "could",
-    "should", "may", "might", "can", "shall", "to", "of", "in", "for",
-    "on", "with", "at", "by", "from", "as", "into", "about", "like",
-    "through", "after", "over", "between", "out", "against", "during",
-    "without", "before", "under", "around", "among", "i", "me", "my",
-    "you", "your", "we", "our", "they", "them", "their", "it", "its",
-    "this", "that", "these", "those", "what", "which", "who", "whom",
-    "how", "when", "where", "why", "all", "each", "every", "both",
-    "few", "more", "most", "other", "some", "any", "no", "not", "only",
-    "same", "so", "than", "too", "very", "just", "because", "but", "and",
-    "or", "if", "then", "else", "also", "here", "there", "want", "need",
-    "looking", "show", "get", "find", "tell", "help", "please",
-]);
+import { chatWithContext, getSearchIntent, scoreProductForIntent } from "../services/aiService.js";
 
 /**
  * Start a new chat session.
@@ -83,35 +66,50 @@ const sendMessage = async (req, res) => {
         );
         const conversationHistory = historyRows.reverse(); // oldest first
 
-        // Extract keywords from the user's message for product search
-        const keywords = message
-            .toLowerCase()
-            .split(/\s+/)
-            .filter((w) => w.length >= 3 && !STOP_WORDS.has(w));
+        const intent = getSearchIntent(message);
+        const terms = intent.terms.slice(0, 8);
+        let products = [];
 
-        // Fetch relevant products based on keywords
-        let productContext = "No matching products found.";
-        if (keywords.length > 0) {
-            const conditions = keywords.map((_, i) => `(p.name ILIKE $${i + 1} OR p.description ILIKE $${i + 1} OR p.category ILIKE $${i + 1})`);
-            const patterns = keywords.map((k) => `%${k}%`);
+        if (terms.length > 0) {
+            const patterns = terms.map((term) => `%${term}%`);
+            const conditions = terms.map((_, index) => {
+                const param = `$${index + 1}`;
+                return `(p.name ILIKE ${param} OR p.description ILIKE ${param} OR p.category ILIKE ${param} OR p.sub_category ILIKE ${param})`;
+            });
 
-            const { rows: products } = await pool.query(
-                `SELECT p.id, p.name, p.category, p.price, SUBSTRING(p.description FROM 1 FOR 100) AS description
+            const { rows } = await pool.query(
+                `SELECT p.id, p.name, p.category, p.sub_category, p.price, p.image, p.sizes, p.bestseller,
+                        SUBSTRING(p.description FROM 1 FOR 220) AS description
                  FROM products p
                  WHERE ${conditions.join(" OR ")}
-                 LIMIT 15`,
+                 ORDER BY p.bestseller DESC, p.date DESC
+                 LIMIT 40`,
                 patterns
             );
-
-            if (products.length > 0) {
-                productContext = products
-                    .map((p) => `Product: ${p.name}, Category: ${p.category}, Price: $${p.price}, Description: ${p.description}..., ID: ${p.id}`)
-                    .join("\n");
-            }
+            products = rows;
         }
 
+        if (products.length === 0) {
+            const { rows } = await pool.query(
+                `SELECT p.id, p.name, p.category, p.sub_category, p.price, p.image, p.sizes, p.bestseller,
+                        SUBSTRING(p.description FROM 1 FOR 220) AS description
+                 FROM products p
+                 ORDER BY p.bestseller DESC, p.date DESC
+                 LIMIT 40`
+            );
+            products = rows;
+        }
+
+        products = products
+            .map((product) => ({
+                ...product,
+                semanticScore: scoreProductForIntent(product, intent),
+            }))
+            .sort((a, b) => b.semanticScore - a.semanticScore || Number(b.bestseller) - Number(a.bestseller))
+            .slice(0, 20);
+
         // Call AI
-        const aiResult = await chatWithContext(message, conversationHistory, productContext);
+        const aiResult = await chatWithContext(message, conversationHistory, products);
 
         // Save AI response
         await pool.query(

@@ -57,7 +57,16 @@ jest.unstable_mockModule('../services/aiService.js', () => ({
   rankProductByRelevance: jest.fn(),
   generateProductDescription: jest.fn().mockResolvedValue({ description: 'Mocked description', highlights: [] }),
   regenerateProductDescription: jest.fn().mockResolvedValue({ description: 'Mocked description', highlights: [] }),
-  chatWithContext: jest.fn().mockResolvedValue({ reply: 'Mocked reply', suggestedProducts: [] })
+  chatWithContext: jest.fn().mockResolvedValue({ reply: 'Mocked reply', suggestedProducts: [] }),
+  getSearchIntent: jest.fn().mockReturnValue({
+    original: 'Test',
+    terms: ['test'],
+    maxPrice: null,
+    minPrice: null,
+    categories: [],
+    subCategories: []
+  }),
+  scoreProductForIntent: jest.fn().mockReturnValue(1)
 }));
 
 jest.unstable_mockModule('../middleware/multer.js', () => ({

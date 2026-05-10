@@ -3,6 +3,32 @@ import { pool } from "../config/postgres.js";
 import jwt from "jsonwebtoken";
 // function for add product
 
+const allowedSizes = ["S", "M", "L", "XL", "XXL"];
+const sizeOrder = ["S", "M", "L", "XL", "XXL"];
+
+const getProductValidationError = ({ name, description, price, category, subCategory, sizes, images }) => {
+  if (!name?.trim()) return "Product name is required";
+  if (!description?.trim()) return "Product description is required";
+  if (!category?.trim()) return "Product category is required";
+  if (!subCategory?.trim()) return "Product sub category is required";
+  if (price === undefined || price === null || String(price).trim() === "") {
+    return "Product price is required";
+  }
+  if (!Number.isFinite(Number(price)) || Number(price) <= 0) {
+    return "Product price must be greater than 0";
+  }
+  if (!Array.isArray(sizes) || sizes.length === 0) {
+    return "Select at least one product size";
+  }
+  if (sizes.some((size) => !allowedSizes.includes(size))) {
+    return "Selected product size is invalid";
+  }
+  if (!Array.isArray(images) || images.length === 0) {
+    return "Upload at least one product image";
+  }
+  return null;
+};
+
 const addProduct = async (req, res) => {
   try {
     if (req.role === 'admin') {
@@ -19,14 +45,35 @@ const addProduct = async (req, res) => {
     } = req.body;
     const seller_id = req.userId;
 
-    const image1 = req.files.image1 && req.files.image1[0];
-    const image2 = req.files.image2 && req.files.image2[0];
-    const image3 = req.files.image3 && req.files.image3[0];
-    const image4 = req.files.image4 && req.files.image4[0];
+    const image1 = req.files?.image1 && req.files.image1[0];
+    const image2 = req.files?.image2 && req.files.image2[0];
+    const image3 = req.files?.image3 && req.files.image3[0];
+    const image4 = req.files?.image4 && req.files.image4[0];
 
     const images = [image1, image2, image3, image4].filter(
       (item) => item !== undefined,
     );
+
+    let parsedSizes;
+    try {
+      parsedSizes = JSON.parse(sizes);
+    } catch (error) {
+      return res.status(400).json({ success: false, message: "Select at least one product size" });
+    }
+
+    const validationError = getProductValidationError({
+      name,
+      description,
+      price,
+      category,
+      subCategory,
+      sizes: parsedSizes,
+      images,
+    });
+
+    if (validationError) {
+      return res.status(400).json({ success: false, message: validationError });
+    }
 
     let imagesUrl = await Promise.all(
       images.map(async (item) => {
@@ -36,11 +83,6 @@ const addProduct = async (req, res) => {
         return result.secure_url;
       }),
     );
-
-    const sizeOrder = [ "S", "M", "L", "XL", "XXL"];
-
-// parse sizes
-let parsedSizes = JSON.parse(sizes);
 
 // sort according to predefined order
 parsedSizes.sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));

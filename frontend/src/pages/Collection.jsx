@@ -3,14 +3,16 @@ import { ShopContext } from "../context/ShopContext";
 import { assets } from "../assets/assets";
 import Title from "../components/Title";
 import ProductItem from "../components/ProductItem";
+import axios from "axios";
 
 const Collection = () => {
-  const { products,search,showSearch } = useContext(ShopContext);
+  const { products, search, showSearch, backendUrl } = useContext(ShopContext);
   const [showFilter, setShowFilter] = useState(false);
   const [filterProducts, setFilterProducts] = useState([]);
   const [category, setCategory] = useState([]);
   const [subCategory, setSubCategory] = useState([]);
   const [sortType, setSortType] = useState("relevant");
+  const [searchMeta, setSearchMeta] = useState(null);
 
   const toggleCategory = (e) => {
     if (category.includes(e.target.value)) {
@@ -28,16 +30,34 @@ const Collection = () => {
     }
   };
 
-  const applyFilter = () => {
+  const applyFilter = async () => {
   let productsCopy = products.slice();
 
-  // Text + Price search
   if (showSearch && search) {
-    productsCopy = productsCopy.filter(
-      (item) =>
-        item.name.toLowerCase().includes(search.toLowerCase()) ||
-        item.price.toString().includes(search) // <-- price search
-    );
+    try {
+      const response = await axios.get(
+        backendUrl + `/api/search/search?q=${encodeURIComponent(search)}&limit=100`
+      );
+      if (response.data.success) {
+        productsCopy = response.data.products;
+        setSearchMeta({
+          method: response.data.searchMethod,
+          interpretedQuery: response.data.interpretedQuery,
+        });
+      }
+    } catch (error) {
+      console.log(error);
+      productsCopy = productsCopy.filter(
+        (item) =>
+          item.name.toLowerCase().includes(search.toLowerCase()) ||
+          item.description?.toLowerCase().includes(search.toLowerCase()) ||
+          item.category?.toLowerCase().includes(search.toLowerCase()) ||
+          item.price.toString().includes(search)
+      );
+      setSearchMeta({ method: "local", interpretedQuery: null });
+    }
+  } else {
+    setSearchMeta(null);
   }
 
   if (category.length > 0) {
@@ -177,7 +197,14 @@ const Collection = () => {
       <div className="flex-1">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 ">
   {showSearch && search ? (
-    <Title text1={"SEARCH"} text2={"RESULTS"} />
+    <div>
+      <Title text1={"SEARCH"} text2={"RESULTS"} />
+      {searchMeta?.method && (
+        <p className="text-xs text-gray-500 mt-1">
+          Search mode: {searchMeta.method}
+        </p>
+      )}
+    </div>
   ) : (
     <Title text1={"ALL"} text2={"COLLECTIONS"} />
   )}

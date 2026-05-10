@@ -17,6 +17,7 @@ const Add = ({token}) => {
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("Men");
   const [subCategory, setSubCategory] = useState("Topwear");
+  const [keywords, setKeywords] = useState("");
   const [bestseller, setBestseller] = useState(false);
   const [sizes, setSizes] = useState([]);
 
@@ -24,12 +25,24 @@ const Add = ({token}) => {
   const [showRegen, setShowRegen] = useState(false);
   const [regenInstruction, setRegenInstruction] = useState("");
 
+  const validateProductForm = () => {
+    if (!image1 && !image2 && !image3 && !image4) return "Upload at least one product image";
+    if (!name.trim()) return "Product name is required";
+    if (!description.trim()) return "Product description is required";
+    if (!category.trim()) return "Product category is required";
+    if (!subCategory.trim()) return "Product sub category is required";
+    if (!String(price).trim()) return "Product price is required";
+    if (Number(price) <= 0) return "Product price must be greater than 0";
+    if (sizes.length === 0) return "Select at least one product size";
+    return "";
+  };
+
   const generateDescription = async () => {
     if (!name.trim()) { toast.error("Enter a product name first"); return; }
     setAiGenerating(true);
     try {
       const res = await axios.post(backendUrl + '/api/description/generate', 
-        { name, category, subCategory, sizes, price },
+        { name, category, subCategory, sizes, price, keywords },
         { headers: { authorization: token } }
       );
       if (res.data.success) { setDescription(res.data.description); setShowRegen(true); }
@@ -54,6 +67,12 @@ const Add = ({token}) => {
 
   const onSubmitHandler =async (e) =>{
     e.preventDefault();
+    const validationError = validateProductForm();
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append('name',name);
@@ -80,10 +99,13 @@ const Add = ({token}) => {
         setName("");
         setDescription("");
         setPrice("");
+        setKeywords("");
         setImage1(false);
         setImage2(false);
         setImage3(false);
         setImage4(false);
+        setSizes([]);
+        setBestseller(false);
       } else{
         toast.error(response.data.message)
       }
@@ -108,6 +130,7 @@ const Add = ({token}) => {
             <input
               onChange={(e) => setImage1(e.target.files[0])}
               type="file"
+              accept="image/*"
               id="image1"
               hidden
             />
@@ -121,6 +144,7 @@ const Add = ({token}) => {
             <input
               onChange={(e) => setImage2(e.target.files[0])}
               type="file"
+              accept="image/*"
               id="image2"
               hidden
             />
@@ -134,6 +158,7 @@ const Add = ({token}) => {
             <input
               onChange={(e) => setImage3(e.target.files[0])}
               type="file"
+              accept="image/*"
               id="image3"
               hidden
             />
@@ -147,11 +172,22 @@ const Add = ({token}) => {
             <input
               onChange={(e) => setImage4(e.target.files[0])}
               type="file"
+              accept="image/*"
               id="image4"
               hidden
             />
           </label>
         </div>
+      </div>
+      <div className="w-full">
+        <p className="mb-2">AI keywords / product notes</p>
+        <input
+          onChange={(e) => setKeywords(e.target.value)}
+          value={keywords}
+          className="w-full max-w-125 px-3 py-2 border border-gray-300 rounded"
+          type="text"
+          placeholder="e.g. blue oversized cotton hoodie, soft fabric, streetwear"
+        />
       </div>
       <div className="w-full">
         <p className="mb-2">Product name</p>
