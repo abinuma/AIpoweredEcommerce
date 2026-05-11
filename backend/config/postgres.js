@@ -4,7 +4,7 @@ import { Pool, types } from "pg";
 types.setTypeParser(20, (val) => parseInt(val, 10));
 
 
-const connectionString = process.env.POSTGRES_URI || process.env.DATABASE_URL;
+const connectionString = process.env.POSTGRES_URI;
 
 export const pool = new Pool({
   connectionString,

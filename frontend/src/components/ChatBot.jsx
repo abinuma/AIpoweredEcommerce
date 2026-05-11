@@ -46,8 +46,9 @@ const ChatBot = () => {
       localStorage.setItem("chatbot_session_id", id);
       setSessionId(id);
       return id;
-    } catch {
-      return null;
+    } catch (error) {
+       console.log(error);
+  console.log(error.response?.data);
     }
   };
 

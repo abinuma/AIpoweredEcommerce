@@ -18,6 +18,7 @@ import Verify from './pages/Verify'
 import SellerRequest from './pages/SellerRequest'
 import ChatBot from './components/ChatBot'
 import Shops from './pages/Shops'
+import ShopProducts from './pages/ShopProducts'
 import AdminApp from './admin/App'
 import SellerApp from './seller/SellerApp'
 
@@ -33,6 +34,7 @@ const App = () => {
       <Routes>
         <Route path='/' element={<Home/>}/>
         <Route path='/shops' element={<Shops/>}/>
+        <Route path='/shops/:shopId' element={<ShopProducts/>}/>
         <Route path="/collection" element={<Collection/>}/>
         <Route path='/about' element={<About/>}/>
         <Route path='/contact' element={<Contact/>}/>

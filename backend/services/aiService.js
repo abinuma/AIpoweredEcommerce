@@ -1,5 +1,6 @@
 const DEFAULT_GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 const STOP_WORDS = new Set([
   "the",
@@ -45,19 +46,27 @@ const SYNONYMS = {
 
 const parseJsonFromText = (text) => {
   if (!text) return null;
-  const cleaned = text
-    .replace(/```json\n?/g, "")
-    .replace(/```\n?/g, "")
-    .trim();
 
   try {
-    return JSON.parse(cleaned);
+    const cleaned = text
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+
+    if (start === -1 || end === -1) {
+      throw new Error("No JSON object found");
+    }
+
+    const jsonString = cleaned.slice(start, end + 1);
+
+    return JSON.parse(jsonString);
   } catch (error) {
-    const objectMatch = cleaned.match(/\{[\s\S]*\}/);
-    const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
-    const jsonText = objectMatch?.[0] || arrayMatch?.[0];
-    if (!jsonText) throw error;
-    return JSON.parse(jsonText);
+    console.log("JSON Parse Error:", error.message);
+    console.log("Problematic Text:", text);
+    return null;
   }
 };
 
@@ -183,59 +192,34 @@ const localProductDescription = ({ name, category, subCategory, sizes, price, ke
   };
 };
 
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
+});
+
 export const generateAIResponse = async (prompt) => {
   try {
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    const geminiUrl = process.env.GEMINI_URL || DEFAULT_GEMINI_URL;
-
-    if (!geminiApiKey) {
-      console.log("GEMINI_API_KEY is not set in environment variables");
-      return null;
-    }
-
-    const baseUrl = geminiUrl.endsWith("/") ? geminiUrl.slice(0, -1) : geminiUrl;
-    const modelUrl = baseUrl.includes("/v1beta/models/")
-      ? baseUrl
-      : `${baseUrl}/v1beta/models/gemini-2.0-flash:generateContent`;
-    const url = modelUrl.includes("key=")
-      ? modelUrl
-      : `${modelUrl}${modelUrl.includes("?") ? "&" : "?"}key=${geminiApiKey}`;
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.35,
-          topP: 0.9,
+    const completion = await client.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "user",
+          content: prompt,
         },
-      }),
+      ],
+      temperature: 0.4,
+      max_tokens: 1000,
     });
 
-    if (!response.ok) {
-      let bodyText = "<failed to read body>";
-      try {
-        bodyText = await response.text();
-      } catch (error) {
-        console.log("Failed to read Gemini error body:", error.message);
-      }
-      console.log(`Gemini API error: ${response.status} ${response.statusText}`);
-      console.log("Gemini response body:", bodyText);
-      return null;
-    }
-
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      console.log("Gemini response missing text:", JSON.stringify(data, null, 2));
-    }
-    return text || null;
+    return completion.choices[0]?.message?.content || null;
   } catch (error) {
-    console.log("AI Service error:", error.stack || error.message);
+    console.log("Groq Error:", error.message);
     return null;
   }
 };
+
 
 export const summarizeReviews = async (reviews) => {
   try {
@@ -280,7 +264,16 @@ Respond ONLY with valid JSON:
       };
     }
 
-    const parsed = parseJsonFromText(text);
+    let parsed = null;
+
+try {
+  parsed = parseJsonFromText(text);
+} catch (e) {
+  console.log("JSON Parse Failed");
+  console.log(text);
+
+  return getLocalChatResponse(userMessage, products);
+}
     return {
       summary: parsed.summary || "",
       pros: Array.isArray(parsed.pros) ? parsed.pros : [],

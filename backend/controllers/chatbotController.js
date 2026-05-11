@@ -142,7 +142,8 @@ const sendMessage = async (req, res) => {
             suggestedProducts,
         });
     } catch (error) {
-        console.log("Error sending message:", error.message);
+        console.log("FULL CHATBOT ERROR:");
+console.log(error);
         res.status(500).json({ success: false, message: "Failed to process message" });
     }
 };
