@@ -272,8 +272,11 @@ try {
   console.log("JSON Parse Failed");
   console.log(text);
 
-  return getLocalChatResponse(userMessage, products);
-}
+return {
+  reply:
+    "AI service temporarily unavailable. Please try again later.",
+  suggestedProducts: [],
+};}
     return {
       summary: parsed.summary || "",
       pros: Array.isArray(parsed.pros) ? parsed.pros : [],
