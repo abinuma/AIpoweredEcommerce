@@ -1,5 +1,4 @@
 import { pool } from "../config/postgres.js";
-import { chatWithContext } from "../services/aiService.js";
 // import { searchProductsMeili } from "../services/meiliService.js";
 import { chatWithContext, getSearchIntent, scoreProductForIntent } from "../services/aiService.js";
 
