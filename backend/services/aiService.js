@@ -422,12 +422,13 @@ export const chatWithContext = async (
   products = [],
 ) => {
   try {
-    const productContext = products
-      .slice(0, 20)
-      .map((product) => {
-        return `ID: ${product.id}; Name: ${product.name}; Category: ${product.category}/${product.sub_category || product.subCategory}; Price: $${product.price}; Description: ${product.description?.substring(0, 160) || ""}`;
-      })
-      .join("\n");
+    // const productContext = products
+    //   .slice(0, 20)
+    //   .map((product) => {
+    //     return `ID: ${product.id}; Name: ${product.name}; Category: ${product.category}/${product.sub_category || product.subCategory}; Price: $${product.price}; Description: ${product.description?.substring(0, 160) || ""}`;
+    //   })
+    //   .join("\n");
+    const productContext = JSON.stringify(products.slice(0, 20), null, 2);
 
     const historyText =
       conversationHistory && conversationHistory.length > 0

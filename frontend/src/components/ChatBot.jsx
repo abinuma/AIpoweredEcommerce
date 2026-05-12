@@ -13,6 +13,7 @@ const ChatBot = () => {
   const [sessionId, setSessionId] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const token = localStorage.getItem("token");
 
   // Load or create session
   useEffect(() => {
@@ -41,33 +42,44 @@ const ChatBot = () => {
 
   const createSession = async () => {
     try {
-      const res = await axios.post(backendUrl + "/api/chatbot/session", {});
+      const res = await axios.get(
+        backendUrl + `/api/chatbot/${sessionId}/history`,
+        {
+          headers: {
+            token,
+          },
+        },
+      );
       const id = res.data.sessionId;
       localStorage.setItem("chatbot_session_id", id);
       setSessionId(id);
       return id;
     } catch (error) {
-       console.log(error);
-  console.log(error.response?.data);
+      console.log(error);
+      console.log(error.response?.data);
     }
   };
 
   const loadHistory = async () => {
     try {
-      const res = await axios.get(backendUrl + `/api/chatbot/${sessionId}/history`);
+      const res = await axios.get(
+        backendUrl + `/api/chatbot/${sessionId}/history`,
+      );
       if (res.data.success && res.data.messages.length > 0) {
         setMessages(
           res.data.messages.map((m) => ({
+            id: m.id,
             role: m.role,
             content: m.content,
             products: [],
-          }))
+          })),
         );
       } else if (res.data.messages.length === 0) {
         setMessages([
           {
             role: "assistant",
-            content: "Hi! 👋 I'm your AI shopping assistant. Ask me anything about our products — I can help you find the perfect item!",
+            content:
+              "Hi! 👋 I'm your AI shopping assistant. Ask me anything about our products — I can help you find the perfect item!",
             products: [],
           },
         ]);
@@ -79,7 +91,8 @@ const ChatBot = () => {
       setMessages([
         {
           role: "assistant",
-          content: "Hi! 👋 I'm your AI shopping assistant. Ask me anything about our products!",
+          content:
+            "Hi! 👋 I'm your AI shopping assistant. Ask me anything about our products!",
           products: [],
         },
       ]);
@@ -94,7 +107,8 @@ const ChatBot = () => {
         setMessages([
           {
             role: "assistant",
-            content: "Hi! 👋 I'm your AI shopping assistant. Ask me anything about our products — I can help you find the perfect item!",
+            content:
+              "Hi! 👋 I'm your AI shopping assistant. Ask me anything about our products — I can help you find the perfect item!",
             products: [],
           },
         ]);
@@ -107,7 +121,19 @@ const ChatBot = () => {
 
     const userMsg = input.trim();
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: userMsg, products: [] }]);
+    // setMessages((prev) => [
+    //   ...prev,
+    //   { role: "user", content: userMsg, products: [] },
+    // ]);
+    setMessages((prev) => [
+  ...prev,
+  {
+    id: "temp-user-" + Date.now(),
+    role: "user",
+    content: userMsg,
+    products: [],
+  },
+]);
     setIsLoading(true);
 
     try {
@@ -117,21 +143,30 @@ const ChatBot = () => {
         if (!sid) {
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: "Sorry, I couldn't connect. Please try again.", products: [] },
+            {
+              role: "assistant",
+              content: "Sorry, I couldn't connect. Please try again.",
+              products: [],
+            },
           ]);
           setIsLoading(false);
           return;
         }
       }
 
-      const res = await axios.post(backendUrl + `/api/chatbot/${sid}/message`, {
-        message: userMsg,
-      });
+      const res = await axios.post(
+        backendUrl + `/api/chatbot/${sid}/message`,
+        {
+          message: userMsg,
+        },
+        { headers: { token } },
+      );
 
       if (res.data.success) {
         setMessages((prev) => [
           ...prev,
           {
+            id: res.data.assistantMessageId,
             role: "assistant",
             content: res.data.reply,
             products: res.data.suggestedProducts || [],
@@ -140,13 +175,21 @@ const ChatBot = () => {
       } else {
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: "Sorry, something went wrong. Please try again.", products: [] },
+          {
+            role: "assistant",
+            content: "Sorry, something went wrong. Please try again.",
+            products: [],
+          },
         ]);
       }
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Sorry, I couldn't process that. Please try again.", products: [] },
+        {
+          role: "assistant",
+          content: "Sorry, I couldn't process that. Please try again.",
+          products: [],
+        },
       ]);
     }
     setIsLoading(false);
@@ -167,7 +210,8 @@ const ChatBot = () => {
     width: "56px",
     height: "56px",
     borderRadius: "50%",
-    background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+    background:
+      "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
     color: "white",
     border: "none",
     cursor: "pointer",
@@ -198,16 +242,19 @@ const ChatBot = () => {
     animation: "chatSlideUp 0.3s ease-out",
   };
 
-  const mobilePanel = window.innerWidth < 640 ? {
-    ...panelStyle,
-    bottom: 0,
-    right: 0,
-    width: "100vw",
-    height: "100vh",
-    maxWidth: "100vw",
-    maxHeight: "100vh",
-    borderRadius: 0,
-  } : panelStyle;
+  const mobilePanel =
+    window.innerWidth < 640
+      ? {
+          ...panelStyle,
+          bottom: 0,
+          right: 0,
+          width: "100vw",
+          height: "100vh",
+          maxWidth: "100vw",
+          maxHeight: "100vh",
+          borderRadius: 0,
+        }
+      : panelStyle;
 
   return (
     <>
@@ -226,7 +273,12 @@ const ChatBot = () => {
 
       {/* Floating Bubble */}
       {!isOpen && (
-        <button className="chat-bubble-btn" style={bubbleStyle} onClick={handleOpen} title="AI Shopping Assistant">
+        <button
+          className="chat-bubble-btn"
+          style={bubbleStyle}
+          onClick={handleOpen}
+          title="AI Shopping Assistant"
+        >
           ✦
         </button>
       )}
@@ -237,7 +289,8 @@ const ChatBot = () => {
           {/* Header */}
           <div
             style={{
-              background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+              background:
+                "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
               color: "white",
               padding: "16px 20px",
               display: "flex",
@@ -249,10 +302,51 @@ const ChatBot = () => {
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <span style={{ fontSize: "20px" }}>✦</span>
               <div>
-                <p style={{ fontWeight: 600, fontSize: "15px", margin: 0 }}>AI Shopping Assistant</p>
-                <p style={{ fontSize: "11px", opacity: 0.7, margin: 0 }}>Powered by Gemini</p>
+                <p style={{ fontWeight: 600, fontSize: "15px", margin: 0 }}>
+                  AI Shopping Assistant
+                </p>
+                <p style={{ fontSize: "11px", opacity: 0.7, margin: 0 }}>
+                  Powered by Gemini
+                </p>
               </div>
             </div>
+            <button
+              onClick={async () => {
+                try {
+                  await axios.delete(backendUrl + `/api/chatbot/${sessionId}`, {
+                    headers: {
+                      token,
+                    },
+                  });
+
+                  localStorage.removeItem("chatbot_session_id");
+
+                  setSessionId(null);
+
+                  setMessages([
+                    {
+                      role: "assistant",
+                      content: "Chat cleared successfully.",
+                      products: [],
+                    },
+                  ]);
+                } catch (error) {
+                  console.log(error);
+                }
+              }}
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                border: "none",
+                color: "white",
+                padding: "6px 10px",
+                borderRadius: "6px",
+                cursor: "pointer",
+                marginRight: "8px",
+                fontSize: "12px",
+              }}
+            >
+              Clear
+            </button>
             <button
               onClick={() => setIsOpen(false)}
               style={{
@@ -286,19 +380,26 @@ const ChatBot = () => {
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+                    justifyContent:
+                      msg.role === "user" ? "flex-end" : "flex-start",
                   }}
                 >
                   <div
                     style={{
                       maxWidth: "80%",
                       padding: "10px 14px",
-                      borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+                      borderRadius:
+                        msg.role === "user"
+                          ? "14px 14px 4px 14px"
+                          : "14px 14px 14px 4px",
                       background: msg.role === "user" ? "#1a1a2e" : "white",
                       color: msg.role === "user" ? "white" : "#333",
                       fontSize: "13.5px",
                       lineHeight: "1.5",
-                      boxShadow: msg.role === "user" ? "none" : "0 1px 4px rgba(0,0,0,0.06)",
+                      boxShadow:
+                        msg.role === "user"
+                          ? "none"
+                          : "0 1px 4px rgba(0,0,0,0.06)",
                       whiteSpace: "pre-wrap",
                     }}
                   >
@@ -308,11 +409,22 @@ const ChatBot = () => {
 
                 {/* Product suggestions */}
                 {msg.products && msg.products.length > 0 && (
-                  <div style={{ display: "flex", gap: "8px", marginTop: "8px", overflowX: "auto", paddingBottom: "4px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "8px",
+                      marginTop: "8px",
+                      overflowX: "auto",
+                      paddingBottom: "4px",
+                    }}
+                  >
                     {msg.products.map((p) => (
                       <div
                         key={p._id}
-                        onClick={() => { navigate(`/product/${p._id}`); setIsOpen(false); }}
+                        onClick={() => {
+                          navigate(`/product/${p._id}`);
+                          setIsOpen(false);
+                        }}
                         style={{
                           minWidth: "140px",
                           background: "white",
@@ -328,14 +440,35 @@ const ChatBot = () => {
                           <img
                             src={Array.isArray(p.image) ? p.image[0] : p.image}
                             alt={p.name}
-                            style={{ width: "100%", height: "80px", objectFit: "cover", borderRadius: "6px" }}
+                            style={{
+                              width: "100%",
+                              height: "80px",
+                              objectFit: "cover",
+                              borderRadius: "6px",
+                            }}
                           />
                         )}
-                        <p style={{ fontSize: "12px", fontWeight: 600, marginTop: "6px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <p
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            marginTop: "6px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           {p.name}
                         </p>
-                        <p style={{ fontSize: "12px", color: "#0f3460", fontWeight: 700 }}>
-                          {currency}{p.price}
+                        <p
+                          style={{
+                            fontSize: "12px",
+                            color: "#0f3460",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {currency}
+                          {p.price}
                         </p>
                       </div>
                     ))}
@@ -347,7 +480,16 @@ const ChatBot = () => {
             {/* Typing indicator */}
             {isLoading && (
               <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                <div style={{ background: "white", padding: "12px 18px", borderRadius: "14px 14px 14px 4px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", gap: "5px" }}>
+                <div
+                  style={{
+                    background: "white",
+                    padding: "12px 18px",
+                    borderRadius: "14px 14px 14px 4px",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                    display: "flex",
+                    gap: "5px",
+                  }}
+                >
                   {[0, 1, 2].map((i) => (
                     <span
                       key={i}
