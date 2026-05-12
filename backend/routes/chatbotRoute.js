@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { startSession, sendMessage, getSessionHistory, deleteSession } from "../controllers/chatbotController.js";
+import { startSession, sendMessage, getSessionHistory, deleteSession,deleteMessage } from "../controllers/chatbotController.js";
 import authUser from "../middleware/auth.js";
 
 const router = Router();
