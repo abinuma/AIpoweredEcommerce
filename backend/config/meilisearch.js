@@ -1,7 +1,7 @@
-import { Meilisearch } from "meilisearch";
+// import { Meilisearch } from "meilisearch";
 
-const client = new Meilisearch({
-  host: "http://127.0.0.1:7700",
-});
+// const client = new Meilisearch({
+//   host: "http://127.0.0.1:7700",
+// });
 
-export default client;
+// export default client;

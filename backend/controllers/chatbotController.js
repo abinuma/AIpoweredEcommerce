@@ -1,6 +1,8 @@
 import { pool } from "../config/postgres.js";
 import { chatWithContext } from "../services/aiService.js";
-import { searchProductsMeili } from "../services/meiliService.js";
+// import { searchProductsMeili } from "../services/meiliService.js";
+import { chatWithContext, getSearchIntent, scoreProductForIntent } from "../services/aiService.js";
+
 /**
  * Start a new chat session.
  * user_id is optional (null for guests).
@@ -66,7 +68,50 @@ const sendMessage = async (req, res) => {
         );
         const conversationHistory = historyRows.reverse(); // oldest first
 
-        const products = await searchProductsMeili(message);
+
+        const intent = getSearchIntent(message);
+        const terms = intent.terms.slice(0, 8);
+        let products = [];
+
+        if (terms.length > 0) {
+            const patterns = terms.map((term) => `%${term}%`);
+            const conditions = terms.map((_, index) => {
+                const param = `$${index + 1}`;
+                return `(p.name ILIKE ${param} OR p.description ILIKE ${param} OR p.category ILIKE ${param} OR p.sub_category ILIKE ${param})`;
+            });
+
+            const { rows } = await pool.query(
+                `SELECT p.id, p.name, p.category, p.sub_category, p.price, p.image, p.sizes, p.bestseller,
+                        SUBSTRING(p.description FROM 1 FOR 220) AS description
+                 FROM products p
+                 WHERE ${conditions.join(" OR ")}
+                 ORDER BY p.bestseller DESC, p.date DESC
+                 LIMIT 40`,
+                patterns
+            );
+            products = rows;
+        }
+
+        if (products.length === 0) {
+            const { rows } = await pool.query(
+                `SELECT p.id, p.name, p.category, p.sub_category, p.price, p.image, p.sizes, p.bestseller,
+                        SUBSTRING(p.description FROM 1 FOR 220) AS description
+                 FROM products p
+                 ORDER BY p.bestseller DESC, p.date DESC
+                 LIMIT 40`
+            );
+            products = rows;
+        }
+
+        products = products
+            .map((product) => ({
+                ...product,
+                semanticScore: scoreProductForIntent(product, intent),
+            }))
+            .sort((a, b) => b.semanticScore - a.semanticScore || Number(b.bestseller) - Number(a.bestseller))
+            .slice(0, 20);
+
+        // const products = await searchProductsMeili(message);
 
 
         // Call AI
