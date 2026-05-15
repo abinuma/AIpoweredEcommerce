@@ -16,17 +16,40 @@ const sellerRequest = async (req,res) => {
     
 }
 
-const getSellerRequest = async (req,res) => {
-    try {
-        const {rows} = await pool.query(
-            "SELECT * FROM sellerRequest"
-        )
-        res.status(200).json({success:true,requests:rows})
-    } catch (error) {
-        console.log(error)
-        res.status(500).json({success:false,message:error.message})
-    }
-}
+const getSellerRequest = async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT 
+        sr.*,
+        u.email
+      FROM sellerRequest sr
+      LEFT JOIN users u
+      ON sr.user_id = u.id
+      ORDER BY sr.date DESC
+    `);
+
+    const formattedRows = rows.map((req) => ({
+      ...req,
+
+      distance_km:
+        req.latitude && req.longitude
+          ? "Location provided"
+          : null,
+    }));
+
+    res.status(200).json({
+      success: true,
+      requests: formattedRows,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 const verifySellerRequest = async (req,res) => {
     try {
