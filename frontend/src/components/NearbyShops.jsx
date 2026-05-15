@@ -33,7 +33,10 @@ const NearbyShops = () => {
         const shopRes = await axios.get(
           `${backendUrl}/api/location/nearby-shops?lat=${coords.lat}&lng=${coords.lng}&radius=50`,
         );
-        if (shopRes.data.success) setShops(shopRes.data.shops);
+        if (shopRes.data.success){
+           setShops(shopRes.data.shops);
+           console.log(shopRes.data.shops)
+        }
       } catch {
         setError("failed");
       }
@@ -76,7 +79,10 @@ const NearbyShops = () => {
       ) : (
         shops.length > 0 && (
           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-            {shops.slice(0, 3).map((shop) => (
+            {shops
+  .sort((a, b) => a.distance - b.distance)
+  .slice(0, 3)
+  .map((shop) =>  (
               <ShopCard key={shop.id} shop={shop} compact />
             ))}
           </div>

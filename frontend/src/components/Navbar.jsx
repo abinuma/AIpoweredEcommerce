@@ -29,7 +29,7 @@ const Navbar = () => {
     
     <div className="flex items-center justify-between py-5 px-4 font-medium  ">
       <i   >
-        <img src={assets.logo} className="w-[max(25%,80px)] cursor-pointer" onClick={() => navigate("/")} />
+        <img src={assets.mycart} className="w-[max(25%,80px)] cursor-pointer" onClick={() => navigate("/")} />
       </i>
       <ul className="hidden sm:flex gap-5 text-sm text-gray-700 mr-3">
         <NavLink to="/" className="flex flex-col items-center gap-1">

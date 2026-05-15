@@ -22,9 +22,11 @@ import add_icon from './add_icon.png'
 import order_box_icon from './order_box_icon.png'
 import order_icon from './order_icon.png'
 import parcel_icon from './parcel_icon.svg'
+import mycart from './mycart.png'
 
 export const assets = {
     logo,
+    mycart,
     hero_img,
     cart_icon,
     dropdown_icon,

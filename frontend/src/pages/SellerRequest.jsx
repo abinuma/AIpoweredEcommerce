@@ -7,12 +7,13 @@ import Title from "../components/Title";
 const SellerRequest = () => {
   const { backendUrl, token, navigate } = useContext(ShopContext);
   const [shopName, setShopName] = useState("");
+  const [shopDescription, setShopDescription] = useState("");
   const [businessDetail, setBusinessDetail] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [locLoading, setLocLoading] = useState(false);
+  const [locLoading, setLocLoading] = useState(false);  
 
   if (!token) { navigate("/login"); return null; }
 
@@ -33,7 +34,10 @@ const SellerRequest = () => {
     setSubmitting(true);
     try {
       const res = await axios.post(backendUrl + "/api/request/seller-request",
-        { shop_name: shopName, business_detail: businessDetail, latitude: parseFloat(latitude) || null, longitude: parseFloat(longitude) || null },
+        { shop_name: shopName, 
+          shop_description: shopDescription,
+          business_detail: businessDetail, 
+          latitude: parseFloat(latitude) || null, longitude: parseFloat(longitude) || null },
         { headers: { Authorization: token } }
       );
       if (res.data.success) { setSubmitted(true); } 
@@ -59,6 +63,27 @@ const SellerRequest = () => {
           <p className="mb-1 text-sm font-medium">Shop Name *</p>
           <input value={shopName} onChange={e => setShopName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-gray-500" placeholder="Your shop name" required />
         </div>
+
+        <div className="w-full">
+  <p className="mb-1 text-sm font-medium">Short Shop Description *</p>
+
+  <input
+    value={shopDescription}
+    onChange={(e) => {
+      if (e.target.value.length <= 30) {
+        setShopDescription(e.target.value);
+      }
+    }}
+    className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-gray-500"
+    placeholder="Fashion, Electronics..."
+    required
+  />
+
+  <p className="text-xs text-gray-400 mt-1">
+    {shopDescription.length}/30 characters
+  </p>
+</div>
+
         <div className="w-full">
           <p className="mb-1 text-sm font-medium">Business Details *</p>
           <textarea value={businessDetail} onChange={e => setBusinessDetail(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-gray-500 resize-none" rows={4} placeholder="Tell us about your business, what products you sell, etc." required />

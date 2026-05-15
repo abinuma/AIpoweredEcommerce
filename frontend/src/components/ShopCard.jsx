@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 const ShopCard = ({ shop, compact = false }) => {
   const shopName = shop.shop_name || shop.name || "Shop";
-  const ownerName = shop.shop_name ? shop.name : "";
+  const shopDescription = shop.shop_description || "";
 
   return (
     <Link
@@ -22,7 +22,11 @@ const ShopCard = ({ shop, compact = false }) => {
       <h3 className={`font-medium text-gray-800 ${compact ? "text-sm" : "text-lg"} mb-1`}>
         {shopName}
       </h3>
-      {ownerName && <p className="text-sm text-gray-500">{ownerName}</p>}
+      {shopDescription && (
+  <p className="text-sm text-gray-500">
+    {shopDescription}
+  </p>
+)}
       {shop.distance_km !== undefined && (
         <p className="text-xs text-blue-600 mt-1 font-medium">
           {shop.distance_km} km away

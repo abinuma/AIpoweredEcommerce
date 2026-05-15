@@ -2,11 +2,11 @@ import { pool } from "../config/postgres.js";
 
 const sellerRequest = async (req,res) => {
     try {
-        const {shop_name,business_detail,latitude,longitude} = req.body;
+        const {shop_name,shop_description,business_detail,latitude,longitude} = req.body;
         const user_id = req.userId || req.body.user_id;
         await pool.query(
-            "INSERT INTO sellerRequest (user_id,shop_name,business_detail,latitude,longitude,date) VALUES($1,$2,$3,$4,$5,$6) RETURNING * ",
-            [user_id,shop_name,business_detail,latitude,longitude,Date.now()]
+            "INSERT INTO sellerRequest (user_id,shop_name,shop_description,business_detail,latitude,longitude,date) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING * ",
+            [user_id,shop_name,shop_description,business_detail,latitude,longitude,Date.now()]
         )
         res.status(200).json({success:true,message:"Request sent successfully"})
     } catch (error) {

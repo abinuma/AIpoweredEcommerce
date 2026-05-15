@@ -111,6 +111,8 @@ const connectDB = async () => {
       status text NOT NULL DEFAULT 'pending' CHECK( status IN ('pending' ,'approved' , 'rejected')),
       date bigint NOT NULL
     );
+    ALTER TABLE seller_requests
+ADD COLUMN shop_description VARCHAR(20);
 
     CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
     CREATE INDEX IF NOT EXISTS idx_orders_seller_id ON orders(seller_id);
