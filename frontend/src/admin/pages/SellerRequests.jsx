@@ -14,12 +14,9 @@ const SellerRequests = ({ token }) => {
     setLoading(true);
 
     try {
-      const res = await axios.get(
-        backendUrl + "/api/request/seller-request",
-        {
-          headers: { Authorization: token },
-        }
-      );
+      const res = await axios.get(backendUrl + "/api/request/seller-request", {
+        headers: { Authorization: token },
+      });
 
       if (res.data.success) {
         setRequests(res.data.requests);
@@ -44,7 +41,7 @@ const SellerRequests = ({ token }) => {
         { id, status },
         {
           headers: { Authorization: token },
-        }
+        },
       );
 
       if (res.data.success) {
@@ -78,9 +75,7 @@ const SellerRequests = ({ token }) => {
           Seller Requests
         </h1>
 
-        <p className="text-sm text-gray-500 mt-1">
-          Review seller applications
-        </p>
+        <p className="text-sm text-gray-500 mt-1">Review seller applications</p>
       </div>
 
       {/* LOADING */}
@@ -88,15 +83,11 @@ const SellerRequests = ({ token }) => {
         <div className="flex flex-col items-center py-16">
           <div className="w-10 h-10 border-4 border-gray-300 border-t-black rounded-full animate-spin" />
 
-          <p className="mt-4 text-gray-500">
-            Loading requests...
-          </p>
+          <p className="mt-4 text-gray-500">Loading requests...</p>
         </div>
       ) : requests.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center">
-          <p className="text-gray-400">
-            No seller requests found
-          </p>
+          <p className="text-gray-400">No seller requests found</p>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -107,7 +98,6 @@ const SellerRequests = ({ token }) => {
             >
               {/* TOP SECTION */}
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                
                 <div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <h2 className="text-lg font-semibold text-gray-800">
@@ -116,20 +106,17 @@ const SellerRequests = ({ token }) => {
 
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
-                        req.status
+                        req.status,
                       )}`}
                     >
-                      {(req.status || "pending")
-                        .charAt(0)
-                        .toUpperCase() +
+                      {(req.status || "pending").charAt(0).toUpperCase() +
                         (req.status || "pending").slice(1)}
                     </span>
                   </div>
 
                   {req.created_at && (
                     <p className="text-xs text-gray-400 mt-2">
-                      Submitted on{" "}
-                      {new Date(req.created_at).toLocaleString()}
+                      Submitted on {new Date(req.created_at).toLocaleString()}
                     </p>
                   )}
                 </div>
@@ -137,32 +124,24 @@ const SellerRequests = ({ token }) => {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() =>
-                      setOpenRequest(
-                        openRequest === req.id ? null : req.id
-                      )
+                      setOpenRequest(openRequest === req.id ? null : req.id)
                     }
                     className="border border-gray-300 hover:border-black px-4 py-2 rounded-lg text-sm transition-all cursor-pointer"
                   >
-                    {openRequest === req.id
-                      ? "Hide Details"
-                      : "View Details"}
+                    {openRequest === req.id ? "Hide Details" : "View Details"}
                   </button>
 
                   {(!req.status || req.status === "pending") && (
                     <>
                       <button
-                        onClick={() =>
-                          handleAction(req.id, "approved")
-                        }
+                        onClick={() => handleAction(req.id, "approved")}
                         className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer"
                       >
                         Approve
                       </button>
 
                       <button
-                        onClick={() =>
-                          handleAction(req.id, "rejected")
-                        }
+                        onClick={() => handleAction(req.id, "rejected")}
                         className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer"
                       >
                         Reject
@@ -175,7 +154,6 @@ const SellerRequests = ({ token }) => {
               {/* EXPANDED DETAILS */}
               {openRequest === req.id && (
                 <div className="mt-6 border-t pt-6 grid gap-5">
-                  
                   {/* SHOP DESCRIPTION */}
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase mb-1">
@@ -216,9 +194,15 @@ const SellerRequests = ({ token }) => {
                     </p>
 
                     <p className="text-sm text-gray-700">
-                      {req.distance_km
-                        ? `${req.distance_km} km away`
-                        : "Location not available"}
+                      {req.latitude && req.longitude ? (
+                        <span className="text-green-600 font-medium">
+                          Location provided
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">
+                          Location not available
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>

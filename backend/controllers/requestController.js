@@ -31,10 +31,10 @@ const getSellerRequest = async (req, res) => {
     const formattedRows = rows.map((req) => ({
       ...req,
 
-      distance_km:
-        req.latitude && req.longitude
-          ? "Location provided"
-          : null,
+      // distance_km:
+      //   req.latitude && req.longitude
+      //     ? "Location provided"
+      //     : null,
     }));
 
     res.status(200).json({
