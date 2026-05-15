@@ -190,7 +190,7 @@ const SellerRequests = ({ token }) => {
                   {/* LOCATION */}
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase mb-1">
-                      Seller Distance
+                      Seller Location
                     </p>
 
                     <p className="text-sm text-gray-700">

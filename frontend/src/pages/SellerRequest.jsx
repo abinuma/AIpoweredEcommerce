@@ -56,7 +56,7 @@ const SellerRequest = () => {
   );
 
   return (
-    <div className="border-t pt-14">
+    <div className="border-t py-14">
       <div className="text-center text-2xl mb-6"><Title text1="BECOME A" text2="SELLER" /></div>
       <form onSubmit={handleSubmit} className="flex flex-col items-center w-[90%] sm:max-w-lg m-auto gap-5">
         <div className="w-full">
@@ -90,9 +90,9 @@ const SellerRequest = () => {
         </div>
         <div className="w-full">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-sm font-medium">Shop Location (optional)</p>
+            <p className="text-sm font-medium">Shop Location</p>
             <button type="button" onClick={useMyLocation} disabled={locLoading} className="text-xs text-blue-600 hover:underline cursor-pointer">
-              {locLoading ? "Detecting..." : "📍 Use My Location"}
+              {locLoading ? "Detecting..." : "📍 click here to set automatically"}
             </button>
           </div>
           <div className="flex gap-3">
