@@ -100,6 +100,10 @@ const connectDB = async () => {
       review_count integer NOT NULL DEFAULT 0,
       updated_at bigint NOT NULL
     );
+    ALTER TABLE review_summaries ADD COLUMN IF NOT EXISTS is_shared boolean NOT NULL DEFAULT false;
+    ALTER TABLE review_summaries ADD COLUMN IF NOT EXISTS draft_summary text;
+    ALTER TABLE review_summaries ADD COLUMN IF NOT EXISTS draft_pros jsonb;
+    ALTER TABLE review_summaries ADD COLUMN IF NOT EXISTS draft_cons jsonb;
 
     CREATE TABLE IF NOT EXISTS sellerRequest(
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

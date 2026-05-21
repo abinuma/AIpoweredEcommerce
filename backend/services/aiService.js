@@ -240,7 +240,7 @@ Respond ONLY with valid JSON:
 {
   "summary": "A concise 2-3 sentence overall summary",
   "pros": ["pro 1", "pro 2", "pro 3"],
-  "cons": ["con 1", "con 2"]
+  "cons": ["con 1", "con 2", "con 3"]
 }`;
 
     const text = await generateAIResponse(prompt);
@@ -259,7 +259,7 @@ Respond ONLY with valid JSON:
           .map((review) => review.comment.split(".")[0].slice(0, 90)),
         cons: critical
           .filter((review) => review.comment)
-          .slice(0, 2)
+          .slice(0, 3)
           .map((review) => review.comment.split(".")[0].slice(0, 90)),
       };
     }

@@ -20,7 +20,23 @@ const addReview = async (req, res) => {
             return res.status(400).json({ success: false, message: "rating must be an integer between 1 and 5" });
         }
 
-        // Verify the product exists
+        // Verify purchase
+        const { rows: orderRows } = await pool.query(
+            "SELECT items FROM orders WHERE user_id = $1 AND payment = true",
+            [userId]
+        );
+        let hasPurchased = false;
+        for (const order of orderRows) {
+            const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+            if (Array.isArray(items) && items.some(item => item._id === productId)) {
+                hasPurchased = true;
+                break;
+            }
+        }
+        if (!hasPurchased) {
+            return res.json({ success: false, message: "You can only review products you have purchased" });
+        }
+
         const { rows: productRows } = await pool.query(
             "SELECT id FROM products WHERE id = $1 LIMIT 1",
             [productId]
@@ -29,7 +45,6 @@ const addReview = async (req, res) => {
             return res.status(404).json({ success: false, message: "Product not found" });
         }
 
-        // Upsert review — insert or update if user already reviewed this product
         const { rows } = await pool.query(
             `INSERT INTO reviews (product_id, user_id, rating, comment, date)
              VALUES ($1, $2, $3, $4, $5)
@@ -39,16 +54,10 @@ const addReview = async (req, res) => {
             [productId, userId, ratingNum, comment || null, Date.now()]
         );
 
-        // Invalidate cached summary for this product
-        await pool.query(
-            "DELETE FROM review_summaries WHERE product_id = $1",
-            [productId]
-        );
-
         res.status(200).json({ success: true, message: "Review submitted successfully", review: rows[0] });
     } catch (error) {
         console.log(error);
-        res.status(500).json({ success: false, message: error.message });
+        res.json({ success: false, message: error.message });
     }
 };
 
@@ -164,30 +173,12 @@ const getReviewSummary = async (req, res) => {
     try {
         const { productId } = req.params;
 
-        // Fetch all reviews with non-empty comments
-        const { rows: reviews } = await pool.query(
-            "SELECT rating, comment FROM reviews WHERE product_id = $1 AND comment IS NOT NULL AND comment != ''",
-            [productId]
-        );
-
-        if (reviews.length < 3) {
-            return res.status(200).json({
-                success: true,
-                message: "Not enough reviews to summarize. At least 3 reviews with comments are needed.",
-                summary: null,
-                pros: [],
-                cons: [],
-            });
-        }
-
-        // Check cache first
         const { rows: cacheRows } = await pool.query(
-            "SELECT summary, pros, cons, review_count FROM review_summaries WHERE product_id = $1",
+            "SELECT summary, pros, cons FROM review_summaries WHERE product_id = $1 AND is_shared = true",
             [productId]
         );
 
-        if (cacheRows.length > 0 && cacheRows[0].review_count === reviews.length) {
-            // Cache is still valid (same number of reviews)
+        if (cacheRows.length > 0 && cacheRows[0].summary) {
             return res.status(200).json({
                 success: true,
                 summary: cacheRows[0].summary,
@@ -196,35 +187,76 @@ const getReviewSummary = async (req, res) => {
             });
         }
 
-        // Generate new summary via AI
-        const result = await summarizeReviews(reviews);
-
-        if (!result) {
-            return res.status(500).json({
-                success: false,
-                message: "Failed to generate review summary. AI service unavailable.",
-            });
-        }
-
-        // Cache the result (upsert)
-        await pool.query(
-            `INSERT INTO review_summaries (product_id, summary, pros, cons, review_count, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (product_id)
-             DO UPDATE SET summary = $2, pros = $3, cons = $4, review_count = $5, updated_at = $6`,
-            [productId, result.summary, JSON.stringify(result.pros), JSON.stringify(result.cons), reviews.length, Date.now()]
-        );
-
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
-            summary: result.summary,
-            pros: result.pros,
-            cons: result.cons,
+            summary: null,
+            message: "No review summary available yet."
         });
+
     } catch (error) {
         console.log(error);
-        res.status(500).json({ success: false, message: error.message });
+        res.json({ success: false, message: error.message });
     }
 };
 
-export { addReview, getProductReview, deleteReview, getReviewSummary };
+const generateSummary = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const { rows: reviews } = await pool.query(
+            "SELECT rating, comment FROM reviews WHERE product_id = $1 AND comment IS NOT NULL AND comment != ''",
+            [productId]
+        );
+
+        if (reviews.length === 0) {
+            return res.json({ success: false, message: "Not enough reviews to summarize." });
+        }
+
+        const result = await summarizeReviews(reviews);
+        if (!result) return res.json({ success: false, message: "Failed to generate summary." });
+
+        await pool.query(
+            `INSERT INTO review_summaries (product_id, draft_summary, draft_pros, draft_cons, review_count, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (product_id)
+             DO UPDATE SET draft_summary = $2, draft_pros = $3, draft_cons = $4, review_count = $5, updated_at = $6`,
+            [productId, result.summary, JSON.stringify(result.pros), JSON.stringify(result.cons), reviews.length, Date.now()]
+        );
+
+        res.json({ success: true, message: "Summary generated", draft_summary: result.summary, draft_pros: result.pros, draft_cons: result.cons });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+const shareSummary = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const { rows } = await pool.query("SELECT draft_summary, draft_pros, draft_cons FROM review_summaries WHERE product_id = $1", [productId]);
+        if (rows.length === 0 || !rows[0].draft_summary) {
+            return res.json({ success: false, message: "No draft summary to share. Please summarize first." });
+        }
+        await pool.query(
+            `UPDATE review_summaries SET summary = draft_summary, pros = draft_pros, cons = draft_cons, is_shared = true WHERE product_id = $1`,
+            [productId]
+        );
+        res.json({ success: true, message: "Summary shared successfully" });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+const getSellerReviewSummary = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const { rows } = await pool.query("SELECT * FROM review_summaries WHERE product_id = $1", [productId]);
+        if (rows.length === 0) return res.json({ success: true, data: null });
+        res.json({ success: true, data: rows[0] });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+export { addReview, getProductReview, deleteReview, getReviewSummary, generateSummary, shareSummary, getSellerReviewSummary };

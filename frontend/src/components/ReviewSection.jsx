@@ -46,7 +46,12 @@ const ReviewSection = ({ productId }) => {
   };
 
   const stars = (n, sz=16) => Array(5).fill(0).map((_,i) => <span key={i} style={{color:i<n?"#f59e0b":"#d1d5db",fontSize:`${sz}px`}}>★</span>);
-  const displayed = showAll ? reviews : reviews.slice(0,5);
+  const sortedReviews = [...reviews].sort((a, b) => b.rating - a.rating);
+  const displayed = showAll ? sortedReviews : sortedReviews.slice(0,3);
+  const loggedInUserId = (() => {
+    try { return token ? JSON.parse(atob(token.split('.')[1])).id : null; }
+    catch { return null; }
+  })();
   const levels = [{l:"5",c:stats.five_star},{l:"4",c:stats.four_star},{l:"3",c:stats.three_star},{l:"2",c:stats.two_star},{l:"1",c:stats.one_star}];
 
   if (loading) return <div className="mt-8 animate-pulse space-y-4"><div className="h-6 bg-gray-200 rounded w-1/3"/><div className="h-20 bg-gray-200 rounded"/></div>;
@@ -64,7 +69,7 @@ const ReviewSection = ({ productId }) => {
             <div key={lv.l} className="flex items-center gap-2 text-sm">
               <span className="w-3 text-gray-600">{lv.l}</span>
               <span className="text-yellow-500 text-xs">★</span>
-              <div className="flex-1 h-2.5 bg-gray-200 rounded-full overflow-hidden">
+              <div className="w-40 h-2.5 bg-gray-200 rounded-full overflow-hidden">
                 <div className="h-full bg-yellow-400 rounded-full transition-all duration-500" style={{width:stats.total_reviews>0?`${(lv.c/stats.total_reviews)*100}%`:"0%"}}/>
               </div>
               <span className="w-6 text-xs text-gray-500 text-right">{lv.c}</span>
@@ -74,25 +79,27 @@ const ReviewSection = ({ productId }) => {
       </div>
       <div className="py-4">
         {reviews.length===0 ? <p className="text-center text-gray-400 py-8">No reviews yet. Be the first to review this product!</p> : <>
-          {displayed.map(r => (
-            <div key={r.id} className="py-4 border-b last:border-b-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">{r.reviewer_name?.[0]?.toUpperCase()||"U"}</div>
-                  <div>
-                    <p className="font-medium text-sm">{r.reviewer_name||"User"}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {displayed.map(r => (
+              <div key={r.id} className="p-4 border rounded-xl bg-white shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className="flex">{stars(r.rating,13)}</div>
-                      <span className="text-xs text-gray-400">{new Date(parseInt(r.date)).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"})}</span>
+                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">{r.reviewer_name?.[0]?.toUpperCase()||"U"}</div>
+                      <div>
+                        <p className="font-medium text-sm">{r.reviewer_name||"User"}</p>
+                        <span className="text-xs text-gray-400">{new Date(parseInt(r.date)).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"})}</span>
+                      </div>
                     </div>
+                    {token && r.user_id === loggedInUserId && <button onClick={()=>deleteReview(r.id)} className="text-xs text-gray-400 hover:text-red-500">Delete</button>}
                   </div>
+                  <div className="flex mb-2">{stars(r.rating,13)}</div>
+                  {r.comment && <p className="text-sm text-gray-600 line-clamp-4">{r.comment}</p>}
                 </div>
-                {token && <button onClick={()=>deleteReview(r.id)} className="text-xs text-gray-400 hover:text-red-500">Delete</button>}
               </div>
-              {r.comment && <p className="mt-2 text-sm text-gray-600 pl-10">{r.comment}</p>}
-            </div>
-          ))}
-          {reviews.length>5 && <button onClick={()=>setShowAll(!showAll)} className="mt-3 text-sm font-medium text-gray-700 hover:text-black">{showAll?"Show Less":`Show All ${reviews.length} Reviews`}</button>}
+            ))}
+          </div>
+          {reviews.length>3 && <button onClick={()=>setShowAll(!showAll)} className="mt-4 text-sm font-medium text-gray-700 hover:text-black">{showAll?"Show Less":`Show All ${reviews.length} Reviews`}</button>}
         </>}
       </div>
       <div className="border-t pt-6 mt-2">

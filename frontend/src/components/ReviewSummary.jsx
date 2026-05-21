@@ -2,7 +2,7 @@ import { useState, useEffect, useContext } from "react";
 import { ShopContext } from "../context/ShopContext";
 import axios from "axios";
 
-const ReviewSummary = ({ productId }) => {
+const ReviewSummary = ({ productId, reviewCount }) => {
   const { backendUrl } = useContext(ShopContext);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,16 @@ const ReviewSummary = ({ productId }) => {
       <div className="h-4 bg-gray-200 rounded w-1/3 mb-3"/><div className="h-16 bg-gray-200 rounded"/>
     </div>
   );
-  if (!data || !data.summary) return null;
+  if (!data || !data.summary) {
+      if (reviewCount > 0) {
+          return (
+              <div className="my-6 p-5 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-100 text-center text-sm text-gray-500">
+                  No review summary available yet.
+              </div>
+          );
+      }
+      return null;
+  }
 
   const pros = Array.isArray(data.pros) ? data.pros : (typeof data.pros === "string" ? JSON.parse(data.pros) : []);
   const cons = Array.isArray(data.cons) ? data.cons : (typeof data.cons === "string" ? JSON.parse(data.cons) : []);

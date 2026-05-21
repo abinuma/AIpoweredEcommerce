@@ -3,11 +3,13 @@ import React, { useEffect, useState } from "react";
 import { useContext } from "react";
 import { toast } from "react-toastify";
 import { ShopContext } from "../../context/ShopContext";
+import ReviewManager from "../components/ReviewManager";
 
 const List = ({ token }) => {
   const {currency,backendUrl} = useContext(ShopContext)
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
   // -------- Pagination state
   const [currentPage, setCurrentPage] = useState(1); // current page number
   const [itemsPerPage, setItemsPerPage] = useState(10); // items per page
@@ -118,6 +120,7 @@ const List = ({ token }) => {
           {/* -----Product List ------ */}
 
           {currentItems.map((item, index) => (
+            <React.Fragment key={item._id}>
             <div
               className="
     grid 
@@ -126,7 +129,6 @@ const List = ({ token }) => {
     items-center 
     gap-3 py-3 px-2 border-b text-sm
   "
-              key={item._id} // ← better to use _id instead of index
             >
               {/* Image */}
               <div className="w-16 md:w-12">
@@ -161,7 +163,13 @@ const List = ({ token }) => {
               </p>
 
               {/* Delete button – always visible, better alignment */}
-              <div className="justify-self-end md:justify-self-center">
+              <div className="justify-self-end md:justify-self-center flex gap-2">
+                <button
+                  onClick={() => setExpandedId(expandedId === item._id ? null : item._id)}
+                  className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300"
+                >
+                  Reviews
+                </button>
                 <button
                   onClick={() => removeProduct(item._id)}
                   className="
@@ -175,6 +183,12 @@ const List = ({ token }) => {
                 </button>
               </div>
             </div>
+            {expandedId === item._id && (
+                <div className="col-span-full mb-3 ml-16 mr-2">
+                    <ReviewManager productId={item._id} token={token} />
+                </div>
+            )}
+            </React.Fragment>
           ))}
           {/* ---------- Pagination Controls ---------- */}
           {totalPages > 1 && (
