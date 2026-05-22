@@ -15,6 +15,7 @@ const ChatBot = () => {
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const chatRef = useRef(null);
 
   const token = localStorage.getItem("token");
 
@@ -42,6 +43,24 @@ const ChatBot = () => {
       loadHistory();
     }
   }, [isOpen, sessionId]);
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      // If clicking inside the chat box or the floating button, do nothing
+      if (
+        chatRef.current && 
+        !chatRef.current.contains(e.target) &&
+        !e.target.closest('#chatbot-toggle-btn')
+      ) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
 
   const createSession = async () => {
     try {
@@ -222,6 +241,7 @@ const ChatBot = () => {
       {/* Floating Button */}
       {!isOpen && (
         <button
+          id="chatbot-toggle-btn"
           onClick={handleOpen}
           title="AI Shopping Assistant"
           className="fixed bottom-6 right-6 z-[9999] flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-700 text-2xl text-white shadow-2xl transition-all duration-300 hover:scale-110 hover:shadow-indigo-500/30"
@@ -233,11 +253,12 @@ const ChatBot = () => {
       {/* Chat Panel */}
       {isOpen && (
         <div
+          ref={chatRef}
           className="
             fixed z-[9999] flex flex-col overflow-hidden
             bg-white shadow-2xl border border-gray-200
-            sm:bottom-6 sm:right-6 sm:h-[620px] sm:w-[420px] sm:rounded-3xl
-            bottom-0 right-0 h-screen w-screen rounded-none
+            sm:bottom-6 sm:right-6 sm:h-[620px] sm:max-h-[calc(100dvh-48px)] sm:w-[420px] sm:rounded-3xl
+            bottom-0 right-0 h-[100dvh] w-full rounded-none
             animate-[fadeIn_.25s_ease]
           "
         >

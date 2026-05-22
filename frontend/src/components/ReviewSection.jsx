@@ -11,7 +11,7 @@ const ReviewSection = ({ productId }) => {
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [showAll, setShowAll] = useState(false);
+  const [expandedReviews, setExpandedReviews] = useState({});
   const [loading, setLoading] = useState(true);
 
   const fetchReviews = async () => {
@@ -37,17 +37,9 @@ const ReviewSection = ({ productId }) => {
     setSubmitting(false);
   };
 
-  const deleteReview = async (reviewId) => {
-    if (!window.confirm("Delete your review?")) return;
-    try {
-      const res = await axios.delete(backendUrl + `/api/review/${reviewId}`, { headers: { Authorization: token } });
-      if (res.data.success) { toast.success("Review deleted"); fetchReviews(); }
-    } catch (e) { toast.error(e.message); }
-  };
-
   const stars = (n, sz=16) => Array(5).fill(0).map((_,i) => <span key={i} style={{color:i<n?"#f59e0b":"#d1d5db",fontSize:`${sz}px`}}>★</span>);
   const sortedReviews = [...reviews].sort((a, b) => b.rating - a.rating);
-  const displayed = showAll ? sortedReviews : sortedReviews.slice(0,3);
+  const displayed = sortedReviews.slice(0,3);
   const loggedInUserId = (() => {
     try { return token ? JSON.parse(atob(token.split('.')[1])).id : null; }
     catch { return null; }
@@ -91,15 +83,22 @@ const ReviewSection = ({ productId }) => {
                         <span className="text-xs text-gray-400">{new Date(parseInt(r.date)).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"})}</span>
                       </div>
                     </div>
-                    {token && r.user_id === loggedInUserId && <button onClick={()=>deleteReview(r.id)} className="text-xs text-gray-400 hover:text-red-500">Delete</button>}
                   </div>
                   <div className="flex mb-2">{stars(r.rating,13)}</div>
-                  {r.comment && <p className="text-sm text-gray-600 line-clamp-4">{r.comment}</p>}
+                  {r.comment && (
+                    <div>
+                      <p className={`text-sm text-gray-600 ${expandedReviews[r.id] ? "" : "line-clamp-4"}`}>{r.comment}</p>
+                      {r.comment.length > 150 && (
+                        <button onClick={() => setExpandedReviews(prev => ({...prev, [r.id]: !prev[r.id]}))} className="text-xs font-medium text-blue-600 hover:underline mt-1">
+                          {expandedReviews[r.id] ? "Show Less" : "Show More"}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
-          {reviews.length>3 && <button onClick={()=>setShowAll(!showAll)} className="mt-4 text-sm font-medium text-gray-700 hover:text-black">{showAll?"Show Less":`Show All ${reviews.length} Reviews`}</button>}
         </>}
       </div>
       <div className="border-t pt-6 mt-2">

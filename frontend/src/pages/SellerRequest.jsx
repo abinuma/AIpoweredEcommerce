@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { ShopContext } from "../context/ShopContext";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -14,8 +14,26 @@ const SellerRequest = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [locLoading, setLocLoading] = useState(false);  
+  const [requestStatus, setRequestStatus] = useState(null);
+  const [checking, setChecking] = useState(true);
 
   if (!token) { navigate("/login"); return null; }
+
+  // Check request status
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const res = await axios.get(backendUrl + "/api/request/status", { headers: { Authorization: token } });
+        if (res.data.success) {
+          setRequestStatus(res.data.status);
+        }
+      } catch (e) {
+        console.error("Error checking status", e);
+      }
+      setChecking(false);
+    };
+    if (token) checkStatus();
+  }, [token]);
 
   const useMyLocation = () => {
     if (!navigator.geolocation) { toast.error("Geolocation not supported"); return; }
@@ -54,6 +72,20 @@ const SellerRequest = () => {
       <button onClick={() => navigate("/")} className="mt-6 bg-black text-white px-8 py-3 text-sm">Back to Home</button>
     </div>
   );
+
+  if (checking) {
+    return <div className="py-20 text-center">Loading...</div>;
+  }
+
+  if (requestStatus === "pending") {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <h2 className="text-2xl font-medium mb-2">Under Review</h2>
+        <p className="text-gray-500 max-w-md">Your seller request is currently under review.</p>
+        <button onClick={() => navigate("/")} className="mt-6 bg-black text-white px-8 py-3 text-sm">Back to Home</button>
+      </div>
+    );
+  }
 
   return (
     <div className="border-t py-14">

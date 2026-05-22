@@ -1,37 +1,48 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useContext } from "react";
 import { ShopContext } from "../context/ShopContext";
 import axios from "axios";
 
 const ReviewSummary = ({ productId, reviewCount }) => {
   const { backendUrl } = useContext(ShopContext);
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
 
-  useEffect(() => {
-    const fetch = async () => {
-      try {
-        const res = await axios.get(backendUrl + `/api/review/${productId}/summary`);
-        if (res.data.success && res.data.summary) setData(res.data);
-      } catch (e) { console.log(e); }
-      setLoading(false);
-    };
-    if (productId) fetch();
-  }, [productId]);
+  const fetchSummary = async () => {
+    setShowSummary(true);
+    setLoading(true);
+    try {
+      const res = await axios.get(backendUrl + `/api/review/${productId}/summary`);
+      if (res.data.success && res.data.summary) setData(res.data);
+    } catch (e) { console.log(e); }
+    setLoading(false);
+  };
+
+  if (!showSummary) {
+    return (
+      <div className="my-6">
+        <button 
+          onClick={fetchSummary} 
+          className="text-sm font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2"
+        >
+          See Review Summary
+        </button>
+      </div>
+    );
+  }
 
   if (loading) return (
     <div className="my-6 p-5 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl animate-pulse">
       <div className="h-4 bg-gray-200 rounded w-1/3 mb-3"/><div className="h-16 bg-gray-200 rounded"/>
     </div>
   );
+
   if (!data || !data.summary) {
-      if (reviewCount > 0) {
-          return (
-              <div className="my-6 p-5 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-100 text-center text-sm text-gray-500">
-                  No review summary available yet.
-              </div>
-          );
-      }
-      return null;
+    return (
+      <div className="my-6 p-5 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-100 text-center text-sm text-gray-500">
+          No review summary available yet.
+      </div>
+    );
   }
 
   const pros = Array.isArray(data.pros) ? data.pros : (typeof data.pros === "string" ? JSON.parse(data.pros) : []);

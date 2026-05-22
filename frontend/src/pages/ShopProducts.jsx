@@ -14,6 +14,15 @@ const ShopProducts = () => {
   const [error, setError] = useState("");
   const [sortType, setSortType] = useState("newest");
 
+  const loggedInUserId = useMemo(() => {
+    try {
+      const token = localStorage.getItem("token");
+      return token ? JSON.parse(atob(token.split(".")[1])).id : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     const fetchShopProducts = async () => {
       setLoading(true);
@@ -106,7 +115,7 @@ const ShopProducts = () => {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 gap-y-6">
           <ProductGrid
             products={sortedProducts}
-            emptyMessage="This shop has not added products yet."
+            emptyMessage={String(loggedInUserId) === String(shopId) ? "You have not added any products to your shop yet." : "This shop has not added products yet."}
           />
         </div>
       )}

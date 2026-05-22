@@ -53,6 +53,8 @@ const connectDB = async () => {
       date bigint NOT NULL
     );
     ALTER TABLE products ADD COLUMN IF NOT EXISTS seller_id uuid REFERENCES users(id) ON DELETE CASCADE;
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_quantity integer NOT NULL DEFAULT 0;
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS specifications jsonb NOT NULL DEFAULT '{}'::jsonb;
 
     CREATE TABLE IF NOT EXISTS chat_sessions(
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

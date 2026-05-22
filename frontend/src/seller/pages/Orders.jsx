@@ -97,8 +97,10 @@ const renderPageNumbers = () => {
         </div>
       ) : orders.length === 0 ? (
         // Empty State
-        <div className="flex justify-center items-center py-20">
-          <p className="text-gray-400 text-lg">No orders found</p>
+        <div className="flex flex-col items-center justify-center py-20 text-gray-500 bg-white border-x border-b">
+          <div className="text-4xl mb-3">🛍️</div>
+          <p className="text-lg font-medium text-gray-800">No orders placed</p>
+          <p className="text-sm mt-1">When customers place orders, they will appear here.</p>
         </div>
       ) : (
         <div>

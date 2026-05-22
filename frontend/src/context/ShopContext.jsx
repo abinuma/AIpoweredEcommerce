@@ -132,11 +132,27 @@ const ShopContextProvider = (props) => {
     getProductsData();
   }, []);
 
+  const fetchProfile = async (currentToken) => {
+    try {
+      const response = await axios.get(backendUrl + "/api/user/profile", {
+        headers: { Authorization: currentToken }
+      });
+      if (response.data.success && response.data.user) {
+        setRole(response.data.user.role);
+        localStorage.setItem("role", response.data.user.role);
+      }
+    } catch (error) {
+      console.log("Error fetching profile:", error);
+    }
+  };
+
   useEffect(() => {
     if (localStorage.getItem("token")) {
-      setToken(localStorage.getItem("token"));
+      const currentToken = localStorage.getItem("token");
+      setToken(currentToken);
       setRole(localStorage.getItem("role") || "");
-      getUserCart(localStorage.getItem("token"));
+      getUserCart(currentToken);
+      fetchProfile(currentToken);
     }
   }, []);
 

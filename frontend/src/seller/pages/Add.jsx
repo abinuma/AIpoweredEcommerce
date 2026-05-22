@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { assets } from "../../assets/assets";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useContext } from "react";
 import { ShopContext } from "../../context/ShopContext";
+import { specificationsConfig } from "../../config/specifications";
 
-const Add = ({token}) => {
-  const {backendUrl} = useContext(ShopContext)
+const Add = ({ token }) => {
+  const { backendUrl } = useContext(ShopContext)
   const [image1, setImage1] = useState(false);
   const [image2, setImage2] = useState(false);
   const [image3, setImage3] = useState(false);
@@ -15,11 +16,63 @@ const Add = ({token}) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [category, setCategory] = useState("Men");
+  const [category, setCategory] = useState("Clothing");
   const [subCategory, setSubCategory] = useState("Topwear");
   const [keywords, setKeywords] = useState("");
   const [bestseller, setBestseller] = useState(false);
+
+  // Sizes will store objects: { size: string, stock: number }
   const [sizes, setSizes] = useState([]);
+  const [stockQuantity, setStockQuantity] = useState(""); // global stock for items without sizes
+  const [specifications, setSpecifications] = useState({});
+  const [showSizeDropdown, setShowSizeDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowSizeDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleCategoryChange = (e) => {
+    const newCat = e.target.value;
+    setCategory(newCat);
+    setSubCategory(specificationsConfig[newCat]?.subcategories[0] || "");
+    setSpecifications({});
+    setSizes([]);
+    setStockQuantity("");
+  };
+
+  const handleSubCategoryChange = (e) => {
+    setSubCategory(e.target.value);
+    setSpecifications({});
+  };
+
+  const handleSpecChange = (name, value) => {
+    setSpecifications(prev => ({ ...prev, [name]: value }));
+  };
+
+  const toggleSize = (sizeStr) => {
+    setSizes(prev => {
+      if (prev.some(s => s.size === sizeStr)) {
+        return prev.filter(s => s.size !== sizeStr);
+      } else {
+        return [...prev, { size: sizeStr, stock: 0 }];
+      }
+    });
+  };
+
+  const updateSizeStock = (sizeStr, newStock) => {
+    setSizes(prev => prev.map(s => s.size === sizeStr ? { ...s, stock: Number(newStock) } : s));
+  };
+
+  const currentConfig = specificationsConfig[category] || {};
+  const currentFields = currentConfig.fields || currentConfig.fieldsBySubcategory?.[subCategory] || [];
+  const availableSizes = currentConfig.availableSizes || [];
 
   const [aiGenerating, setAiGenerating] = useState(false);
   const [showRegen, setShowRegen] = useState(false);
@@ -33,7 +86,14 @@ const Add = ({token}) => {
     if (!subCategory.trim()) return "Product sub category is required";
     if (!String(price).trim()) return "Product price is required";
     if (Number(price) <= 0) return "Product price must be greater than 0";
-    if (sizes.length === 0) return "Select at least one product size";
+
+    if (availableSizes.length > 0 && sizes.length === 0) return "Select at least one product size";
+
+    for (const field of currentFields) {
+      if (field.required && !specifications[field.name]) {
+        return `${field.label} is required`;
+      }
+    }
     return "";
   };
 
@@ -41,7 +101,7 @@ const Add = ({token}) => {
     if (!name.trim()) { toast.error("Enter a product name first"); return; }
     setAiGenerating(true);
     try {
-      const res = await axios.post(backendUrl + '/api/description/generate', 
+      const res = await axios.post(backendUrl + '/api/description/generate',
         { name, category, subCategory, sizes, price, keywords },
         { headers: { authorization: token } }
       );
@@ -55,7 +115,7 @@ const Add = ({token}) => {
     if (!regenInstruction.trim()) return;
     setAiGenerating(true);
     try {
-      const res = await axios.post(backendUrl + '/api/description/regenerate', 
+      const res = await axios.post(backendUrl + '/api/description/regenerate',
         { name, category, currentDescription: description, instruction: regenInstruction },
         { headers: { authorization: token } }
       );
@@ -65,7 +125,7 @@ const Add = ({token}) => {
     setAiGenerating(false);
   };
 
-  const onSubmitHandler =async (e) =>{
+  const onSubmitHandler = async (e) => {
     e.preventDefault();
     const validationError = validateProductForm();
     if (validationError) {
@@ -75,25 +135,25 @@ const Add = ({token}) => {
 
     try {
       const formData = new FormData();
-      formData.append('name',name);
-      formData.append('description',description);
-      formData.append('price',price);
-      formData.append('category',category);
-      formData.append('subCategory',subCategory);
-      formData.append('bestseller',bestseller);
-      formData.append('sizes',JSON.stringify(sizes));
+      formData.append('name', name);
+      formData.append('description', description);
+      formData.append('price', price);
+      formData.append('category', category);
+      formData.append('subCategory', subCategory);
+      formData.append('bestseller', bestseller);
+      formData.append('sizes', JSON.stringify(sizes));
+      formData.append('stockQuantity', availableSizes.length > 0 ? "0" : stockQuantity);
+      formData.append('specifications', JSON.stringify(specifications));
 
-      image1 && formData.append('image1',image1);
-      image2 && formData.append('image2',image2);
-      image3 && formData.append('image3',image3);
-      image4 && formData.append('image4',image4);
+      image1 && formData.append('image1', image1);
+      image2 && formData.append('image2', image2);
+      image3 && formData.append('image3', image3);
+      image4 && formData.append('image4', image4);
 
-      const response = await axios.post(backendUrl + '/api/product/add', formData,{
-    headers: {
-      authorization: token
-    }
-  }); 
-        
+      const response = await axios.post(backendUrl + '/api/product/add', formData, {
+        headers: { authorization: token }
+      });
+
       if (response.data.success) {
         toast.success(response.data.message)
         setName("");
@@ -106,7 +166,9 @@ const Add = ({token}) => {
         setImage4(false);
         setSizes([]);
         setBestseller(false);
-      } else{
+        setStockQuantity("");
+        setSpecifications({});
+      } else {
         toast.error(response.data.message)
       }
     } catch (error) {
@@ -116,7 +178,7 @@ const Add = ({token}) => {
   }
 
   return (
-    <form onSubmit={onSubmitHandler}  className="flex flex-col w-full items-start gap-3">
+    <form onSubmit={onSubmitHandler} className="flex flex-col w-full items-start gap-3">
       <div>
         <p className="mb-2">Upload Image</p>
 
@@ -203,8 +265,8 @@ const Add = ({token}) => {
       <div className="w-full">
         <div className="flex items-center justify-between mb-2 max-w-125">
           <p>Product description</p>
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={generateDescription}
             disabled={aiGenerating || !name.trim()}
             className="text-xs bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3 py-1 rounded shadow hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all"
@@ -223,15 +285,15 @@ const Add = ({token}) => {
         />
         {showRegen && (
           <div className="flex items-center gap-2 mt-2 max-w-125">
-            <input 
-              type="text" 
-              value={regenInstruction} 
-              onChange={e => setRegenInstruction(e.target.value)} 
-              placeholder="e.g. Make it shorter, Focus on durability" 
+            <input
+              type="text"
+              value={regenInstruction}
+              onChange={e => setRegenInstruction(e.target.value)}
+              placeholder="e.g. Make it shorter, Focus on durability"
               className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded"
             />
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={regenerateDescription}
               disabled={aiGenerating || !regenInstruction.trim()}
               className="text-xs bg-gray-800 text-white px-3 py-2 rounded hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed"
@@ -246,25 +308,25 @@ const Add = ({token}) => {
         <div>
           <p className="mb-2">Product category</p>
           <select
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={handleCategoryChange}
             value={category}
-            className="w-full px-3 py-2"
+            className="w-full px-3 py-2 border border-gray-300 rounded"
           >
-            <option value="Men">Men</option>
-            <option value="Women">Women</option>
-            <option value="Kids">Kids</option>
+            {Object.keys(specificationsConfig).map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
           </select>
         </div>
         <div>
           <p className="mb-2">Sub category</p>
           <select
-            onChange={(e) => setSubCategory(e.target.value)}
+            onChange={handleSubCategoryChange}
             value={subCategory}
-            className="w-full px-3 py-2"
+            className="w-full px-3 py-2 border border-gray-300 rounded"
           >
-            <option value="Topwear">Topwear</option>
-            <option value="Bottomwear">Bottomwear</option>
-            <option value="Winterwear">Winterwear</option>
+            {currentConfig?.subcategories?.map(sub => (
+              <option key={sub} value={sub}>{sub}</option>
+            ))}
           </select>
         </div>
         <div>
@@ -272,75 +334,128 @@ const Add = ({token}) => {
           <input
             onChange={(e) => setPrice(e.target.value)}
             value={price}
-            className="w-full px-3 py-2 sm:w-30"
+            className="w-full px-3 py-2 sm:w-30 border border-gray-300 rounded"
             type="number"
             placeholder="25"
           />
         </div>
+
+        {availableSizes.length === 0 && (
+          <div>
+            <p className="mb-2">Stock Quantity</p>
+            <input
+              onChange={(e) => setStockQuantity(e.target.value)}
+              value={stockQuantity}
+              className="w-full px-3 py-2 sm:w-30 border border-gray-300 rounded"
+              type="number"
+              placeholder="100"
+            />
+          </div>
+        )}
       </div>
 
-      <div>
-        <p className="mb-2">Product sizes</p>
-        <div className="flex gap-3 flex-wrap">
-          <div
-            onClick={() =>
-              setSizes((prev) =>
-                prev.includes("S")
-                  ? prev.filter((item) => item !== "S")
-                  : [...prev, "S"],
-              )
-            }
-          >
-            <p className={`${sizes.includes("S") ? 'bg-pink-100' : 'bg-slate-200'} px-3 py-1 cursor-pointer`}>S</p>
+      {availableSizes.length > 0 && (
+        <div className="w-full max-w-125 mt-2">
+          <p className="mb-2">Product sizes</p>
+          <div className="relative" ref={dropdownRef}>
+            <div
+              className="w-30 max-w-[125px] px-3 py-2 border border-gray-300 rounded cursor-pointer bg-white flex justify-between items-center"
+              onClick={() => setShowSizeDropdown(!showSizeDropdown)}
+            >
+              {/* <span className="text-gray-700">Select Sizes ▼</span> */}
+
+              <div className="flex justify-between items-center w-full">
+                <span className="text-gray-700">Select sizes</span>
+                <svg
+                  className={`w-4 h-4 transition-transform duration-200 ${showSizeDropdown ? "rotate-180" : ""
+                    }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+
+            {showSizeDropdown && (
+              <div className=" absolute top-full left-0 w-40 mt-1 bg-white border border-gray-200 rounded shadow-lg z-10 max-h-48 overflow-y-auto">
+                {availableSizes.map(sz => {
+                  const isSelected = sizes.some(s => s.size === sz);
+                  return (
+                    <div
+                      key={sz}
+                      className={`w-40 px-4 py-2 cursor-pointer hover:bg-gray-50 flex items-center justify-between ${isSelected ? 'bg-blue-50' : ''}`}
+                      onClick={() => toggleSize(sz)}
+                    >
+                      <span className={isSelected ? 'font-medium text-blue-600' : 'text-gray-700'}>
+                        {sz}
+                      </span>
+                      {isSelected && <span className="text-blue-600">✓</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-          <div
-            onClick={() =>
-              setSizes((prev) =>
-                prev.includes("M")
-                  ? prev.filter((item) => item !== "M")
-                  : [...prev, "M"],
-              )
-            }
-          >
-            <p  className={`${sizes.includes("M") ? 'bg-pink-100' : 'bg-slate-200'} px-3 py-1 cursor-pointer`}>M</p>
-          </div>
-          <div
-            onClick={() =>
-              setSizes((prev) =>
-                prev.includes("L")
-                  ? prev.filter((item) => item !== "L")
-                  : [...prev, "L"],
-              )
-            }
-          >
-            <p className={`${sizes.includes("L") ? 'bg-pink-100' : 'bg-slate-200'} px-3 py-1 cursor-pointer`}>L</p>
-          </div>
-          <div
-            onClick={() =>
-              setSizes((prev) =>
-                prev.includes("XL")
-                  ? prev.filter((item) => item !== "XL")
-                  : [...prev, "XL"],
-              )
-            }
-          >
-            <p className={`${sizes.includes("XL") ? 'bg-pink-100' : 'bg-slate-200'} px-3 py-1 cursor-pointer`}>XL</p>
-          </div>
-          <div
-            onClick={() =>
-              setSizes((prev) =>
-                prev.includes("XXL")
-                  ? prev.filter((item) => item !== "XXL")
-                  : [...prev, "XXL"],
-              )
-            }
-          >
-            <p className={`${sizes.includes("XXL") ? 'bg-pink-100' : 'bg-slate-200'} px-3 py-1 cursor-pointer`}>XXL</p>
+
+          {sizes.length > 0 && (
+            <div className="mt-4 flex flex-col gap-2 p-4 border rounded bg-gray-50">
+              <p className="text-sm font-medium mb-1">Stock per selected size</p>
+              {sizes.map(s => (
+                <div key={s.size} className="flex items-center gap-3">
+                  <span className="w-12 font-medium">{s.size}</span>
+                  <span className="text-gray-500">→</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Stock</span>
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-20 px-2 py-1 border rounded text-sm"
+                      value={s.stock}
+                      onChange={(e) => updateSizeStock(s.size, e.target.value)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {currentFields.length > 0 && (
+        <div className="w-full border p-4 rounded bg-gray-50 mt-2 max-w-125">
+          <p className="mb-4 font-medium">Dynamic Specifications</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {currentFields.map(field => (
+              <div key={field.name}>
+                <p className="mb-1 text-sm text-gray-700">{field.label} {field.required && <span className="text-red-500">*</span>}</p>
+                {field.type === "select" ? (
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                    value={specifications[field.name] || ""}
+                    onChange={(e) => handleSpecChange(field.name, e.target.value)}
+                  >
+                    <option value="">Select...</option>
+                    {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                ) : (
+                  <input
+                    type={field.type}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                    value={specifications[field.name] || ""}
+                    onChange={(e) => handleSpecChange(field.name, e.target.value)}
+                    placeholder={field.label}
+                  />
+                )}
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
+
       <div className="flex gap-2 mt-2">
-        <input onChange={()=>setBestseller(prev => !prev)} checked={bestseller} type="checkbox" id="bestseller" />
+        <input onChange={() => setBestseller(prev => !prev)} checked={bestseller} type="checkbox" id="bestseller" />
         <label className="cursor-pointer" htmlFor="bestseller">
           Add to bestseller
         </label>

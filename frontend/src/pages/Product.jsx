@@ -135,8 +135,8 @@ const Product = () => {
             </div>
           ) : (
             <div>
-              <ReviewSummary productId={productData._id} reviewCount={reviewCount} />
               <ReviewSection productId={productData._id} />
+              <ReviewSummary productId={productData._id} reviewCount={reviewCount} />
             </div>
           )}
         </div>

@@ -8,6 +8,8 @@ const ReviewManager = ({ productId, token }) => {
     const [summaryData, setSummaryData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [generating, setGenerating] = useState(false);
+    const [reviews, setReviews] = useState([]);
+    const [showAll, setShowAll] = useState(false);
 
     const fetchSummary = async () => {
         try {
@@ -20,8 +22,22 @@ const ReviewManager = ({ productId, token }) => {
         }
     };
 
+    const fetchReviews = async () => {
+        try {
+            const res = await axios.get(`${backendUrl}/api/review/${productId}`);
+            if (res.data.success) {
+                setReviews(res.data.reviews || []);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
     useEffect(() => {
-        fetchSummary();
+        if (productId) {
+            fetchSummary();
+            fetchReviews();
+        }
     }, [productId]);
 
     const handleSummarize = async () => {
@@ -94,8 +110,42 @@ const ReviewManager = ({ productId, token }) => {
                 </div>
             )}
             {!summaryData?.draft_summary && (
-                <p className="text-xs text-gray-500">No summary generated yet.</p>
+                <p className="text-xs text-gray-500 mb-4">No summary generated yet.</p>
             )}
+            
+            <div className="mt-6 pt-4 border-t">
+                <h4 className="font-semibold text-sm mb-3">All Customer Reviews</h4>
+                {reviews.length === 0 ? (
+                    <p className="text-xs text-gray-500">No reviews yet.</p>
+                ) : (
+                    <div className="flex flex-col gap-3">
+                        {(showAll ? reviews : reviews.slice(0, 3)).map((rev) => (
+                            <div key={rev._id} className="p-3 bg-white border rounded text-sm">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className="flex text-amber-500 text-xs">
+                                        {Array(5).fill(0).map((_, i) => (
+                                            <span key={i} className={i < rev.rating ? "" : "text-gray-300"}>★</span>
+                                        ))}
+                                    </div>
+                                    <span className="text-gray-800 font-medium">{rev.user_name}</span>
+                                    <span className="text-gray-400 text-xs">
+                                        {new Date(Number(rev.date)).toLocaleDateString()}
+                                    </span>
+                                </div>
+                                <p className="text-gray-600 mt-1">{rev.comment}</p>
+                            </div>
+                        ))}
+                        {reviews.length > 3 && (
+                            <button
+                                onClick={() => setShowAll(!showAll)}
+                                className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800 self-start"
+                            >
+                                {showAll ? "Show Less" : "Show More"}
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

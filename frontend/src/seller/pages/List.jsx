@@ -6,7 +6,7 @@ import { ShopContext } from "../../context/ShopContext";
 import ReviewManager from "../components/ReviewManager";
 
 const List = ({ token }) => {
-  const {currency,backendUrl} = useContext(ShopContext)
+  const { currency, backendUrl } = useContext(ShopContext)
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
@@ -119,88 +119,94 @@ const List = ({ token }) => {
 
           {/* -----Product List ------ */}
 
-          {currentItems.map((item, index) => (
-            <React.Fragment key={item._id}>
-            <div
-              className="
+          {list.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-gray-500 bg-white border-x border-b">
+              <div className="text-4xl mb-3">📦</div>
+              <p className="text-lg font-medium text-gray-800">No products added yet</p>
+              <p className="text-sm mt-1">Start adding products to build your shop inventory.</p>
+            </div>
+          ) : (
+            currentItems.map((item, index) => (
+              <React.Fragment key={item._id}>
+                <div
+                  className="
     grid 
     grid-cols-[80px_1fr_auto]      /* mobile: image + name + actions */
     md:grid-cols-[1fr_3fr_1fr_1fr_1fr]
     items-center 
     gap-3 py-3 px-2 border-b text-sm
   "
-            >
-              {/* Image */}
-              <div className="w-16 md:w-12">
-                <img
-                  className="w-12"
-                  src={item.image?.[0] || "/placeholder.jpg"}
-                  alt={item.name}
-                />
-              </div>
+                >
+                  {/* Image */}
+                  <div className="w-16 md:w-12">
+                    <img
+                      className="w-12"
+                      src={item.image?.[0] || "/placeholder.jpg"}
+                      alt={item.name}
+                    />
+                  </div>
 
-              {/* Name + mobile price & category */}
-              <div className="flex flex-col gap-1 md:block">
-                <p className="font-medium">{item.name}</p>
+                  {/* Name + mobile price & category */}
+                  <div className="flex flex-col gap-1 md:block">
+                    <p className="font-medium">{item.name}</p>
 
-                {/* Only visible on mobile */}
-                <div className="md:hidden text-xs text-gray-600 flex flex-wrap gap-x-3">
-                  <span>{item.category}</span>
-                  <span className="font-medium">
+                    {/* Only visible on mobile */}
+                    <div className="md:hidden text-xs text-gray-600 flex flex-wrap gap-x-3">
+                      <span>{item.category}</span>
+                      <span className="font-medium">
+                        {currency}
+                        {item.price}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Category – hidden on mobile */}
+                  <p className="hidden md:block">{item.category}</p>
+
+                  {/* Price – hidden on mobile */}
+                  <p className="hidden md:block">
                     {currency}
                     {item.price}
-                  </span>
-                </div>
-              </div>
+                  </p>
 
-              {/* Category – hidden on mobile */}
-              <p className="hidden md:block">{item.category}</p>
-
-              {/* Price – hidden on mobile */}
-              <p className="hidden md:block">
-                {currency}
-                {item.price}
-              </p>
-
-              {/* Delete button – always visible, better alignment */}
-              <div className="justify-self-end md:justify-self-center flex gap-2">
-                <button
-                  onClick={() => setExpandedId(expandedId === item._id ? null : item._id)}
-                  className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300"
-                >
-                  Reviews
-                </button>
-                <button
-                  onClick={() => removeProduct(item._id)}
-                  className="
+                  {/* Delete button – always visible, better alignment */}
+                  <div className="justify-self-end md:justify-self-center flex gap-2">
+                    <button
+                      onClick={() => setExpandedId(expandedId === item._id ? null : item._id)}
+                      className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300"
+                    >
+                      Reviews
+                    </button>
+                    <button
+                      onClick={() => removeProduct(item._id)}
+                      className="
         text-gray-500 hover:text-red-600 
         text-xl md:text-lg font-bold
         px-2 py-1 -mr-1 md:mr-0
       "
-                  title="Remove product"
-                >
-                  X
-                </button>
-              </div>
-            </div>
-            {expandedId === item._id && (
-                <div className="col-span-full mb-3 ml-16 mr-2">
-                    <ReviewManager productId={item._id} token={token} />
+                      title="Remove product"
+                    >
+                      X
+                    </button>
+                  </div>
                 </div>
-            )}
-            </React.Fragment>
-          ))}
+                {expandedId === item._id && (
+                  <div className="col-span-full mb-3 ml-16 mr-2">
+                    <ReviewManager productId={item._id} token={token} />
+                  </div>
+                )}
+              </React.Fragment>
+            )))}
           {/* ---------- Pagination Controls ---------- */}
           {totalPages > 1 && (
             <div className="flex justify-center items-center gap-2 mt-6 flex-wrap">
               {/* Prev button */}
               <button
                 onClick={() => currentPage > 1 && paginate(currentPage - 1)}
-                className={`w-12 h-12 cursor-pointer rounded-full border flex justify-center items-center transition-colors ${
-                  currentPage === 1
-                    ? "border-purple-300 text-purple-300 cursor-not-allowed"
-                    : "border-purple-700 text-purple-700 hover:bg-neutral-200 "
-                }`}
+                className={`w-12 h-12 cursor-pointer rounded-full border flex justify-center items-center transition-colors ${currentPage === 1
+                  ? "border-purple-300 text-purple-300 cursor-not-allowed"
+                  : "border-purple-700 text-purple-700 hover:bg-neutral-200 "
+                  }`}
               >
                 &lt;
               </button>
@@ -217,11 +223,10 @@ const List = ({ token }) => {
                     onClick={() => paginate(num)}
                     className={`
     px-4 py-2 rounded-lg font-medium transition-all duration-200
-    ${
-      currentPage === num
-        ? "text-purple-700 underline underline-offset-4 cursor-default"
-        : "text-purple-700 hover:bg-neutral-200 hover:shadow-md"
-    }
+    ${currentPage === num
+                        ? "text-purple-700 underline underline-offset-4 cursor-default"
+                        : "text-purple-700 hover:bg-neutral-200 hover:shadow-md"
+                      }
   `}
                   >
                     {num}
@@ -234,11 +239,10 @@ const List = ({ token }) => {
                 onClick={() =>
                   currentPage < totalPages && paginate(currentPage + 1)
                 }
-                className={`w-12 h-12 cursor-pointer rounded-full border flex justify-center items-center transition-colors ${
-                  currentPage === totalPages
-                    ? "border-purple-300 text-purple-300 cursor-not-allowed"
-                    : "border-purple-700 text-purple-700 hover:bg-neutral-200 "
-                }`}
+                className={`w-12 h-12 cursor-pointer rounded-full border flex justify-center items-center transition-colors ${currentPage === totalPages
+                  ? "border-purple-300 text-purple-300 cursor-not-allowed"
+                  : "border-purple-700 text-purple-700 hover:bg-neutral-200 "
+                  }`}
               >
                 &gt;
               </button>

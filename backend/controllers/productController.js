@@ -17,11 +17,8 @@ const getProductValidationError = ({ name, description, price, category, subCate
   if (!Number.isFinite(Number(price)) || Number(price) <= 0) {
     return "Product price must be greater than 0";
   }
-  if (!Array.isArray(sizes) || sizes.length === 0) {
-    return "Select at least one product size";
-  }
-  if (sizes.some((size) => !allowedSizes.includes(size))) {
-    return "Selected product size is invalid";
+  if (!Array.isArray(sizes)) {
+    return "Sizes must be an array";
   }
   if (!Array.isArray(images) || images.length === 0) {
     return "Upload at least one product image";
@@ -31,6 +28,7 @@ const getProductValidationError = ({ name, description, price, category, subCate
 
 const addProduct = async (req, res) => {
   try {
+    if (req.role === 'admin') {
     if (req.role === 'admin') {
       return res.status(403).json({ success: false, message: "Admins cannot add products" });
     }
@@ -42,6 +40,8 @@ const addProduct = async (req, res) => {
       subCategory,
       sizes,
       bestseller,
+      specifications,
+      stockQuantity,
     } = req.body;
     const seller_id = req.userId;
 
@@ -54,11 +54,18 @@ const addProduct = async (req, res) => {
       (item) => item !== undefined,
     );
 
-    let parsedSizes;
+    let parsedSizes = [];
     try {
-      parsedSizes = JSON.parse(sizes);
+      parsedSizes = sizes ? JSON.parse(sizes) : [];
     } catch (error) {
-      return res.status(400).json({ success: false, message: "Select at least one product size" });
+      parsedSizes = typeof sizes === 'string' ? [sizes] : [];
+    }
+    
+    let parsedSpecs = {};
+    try {
+      parsedSpecs = specifications ? JSON.parse(specifications) : {};
+    } catch (error) {
+      return res.status(400).json({ success: false, message: "Invalid specifications format" });
     }
 
     const validationError = getProductValidationError({
@@ -85,8 +92,6 @@ const addProduct = async (req, res) => {
     );
 
 // sort according to predefined order
-parsedSizes.sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
-
     const productData = {
       name,
       seller_id,
@@ -95,8 +100,9 @@ parsedSizes.sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
       price: Number(price),
       subCategory,
       bestseller: bestseller === "true" ? true : false,
-      sizes: parsedSizes, // ✅ sorted sizes
- //used to convert stringified array back to actual array(because Data coming from req.body is ALWAYS a string)
+      sizes: parsedSizes,
+      specifications: parsedSpecs,
+      stockQuantity: Number(stockQuantity) || 0,
       image: imagesUrl,
       date: Date.now(),
     };
@@ -111,8 +117,10 @@ parsedSizes.sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
         bestseller,
         sizes,
         image,
-        date
-      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        date,
+        specifications,
+        stock_quantity
+      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
       [
         productData.name,
         productData.seller_id,
@@ -124,6 +132,8 @@ parsedSizes.sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
         JSON.stringify(productData.sizes),
         JSON.stringify(productData.image),
         productData.date,
+        JSON.stringify(productData.specifications),
+        productData.stockQuantity,
       ],
     );
     res.json({ success: true, message: "Product added" });
@@ -178,6 +188,11 @@ const listProducts = async (req, res) => {
       `SELECT
         id AS "_id",
         name,
+    if (!seller_id) {
+      const result = await pool.query(
+      `SELECT
+        id AS "_id",
+        name,
         seller_id,
         description,
         price,
@@ -186,7 +201,29 @@ const listProducts = async (req, res) => {
         sub_category AS "subCategory",
         sizes,
         bestseller,
-        date
+        date,
+        specifications,
+        stock_quantity AS "stockQuantity"
+      FROM products 
+      ORDER BY date DESC`,
+    );
+      productRows = result.rows  
+  } else{
+      const result = await pool.query(
+      `SELECT
+        id AS "_id",
+        name,
+        seller_id,
+        description,
+        price,
+        image,
+        category,
+        sub_category AS "subCategory",
+        sizes,
+        bestseller,
+        date,
+        specifications,
+        stock_quantity AS "stockQuantity"
       FROM products WHERE seller_id = $1
       ORDER BY date DESC`,
       [seller_id]
@@ -237,7 +274,9 @@ const singleProduct = async (req, res) => {
         sub_category AS "subCategory",
         sizes,
         bestseller,
-        date
+        date,
+        specifications,
+        stock_quantity AS "stockQuantity"
       FROM products
       WHERE id = $1
       LIMIT 1`,
@@ -256,12 +295,12 @@ const adminListProducts = async (req, res) => {
     let result;
     if (req.role === 'admin') {
       result = await pool.query(
-        `SELECT id AS "_id", seller_id, name, description, price, image, category, sub_category AS "subCategory", sizes, bestseller, date
+        `SELECT id AS "_id", seller_id, name, description, price, image, category, sub_category AS "subCategory", sizes, bestseller, date, specifications, stock_quantity AS "stockQuantity"
          FROM products ORDER BY date DESC`
       );
     } else {
       result = await pool.query(
-        `SELECT id AS "_id", seller_id, name, description, price, image, category, sub_category AS "subCategory", sizes, bestseller, date
+        `SELECT id AS "_id", seller_id, name, description, price, image, category, sub_category AS "subCategory", sizes, bestseller, date, specifications, stock_quantity AS "stockQuantity"
          FROM products WHERE seller_id = $1 ORDER BY date DESC`,
         [req.userId]
       );
@@ -274,4 +313,3 @@ const adminListProducts = async (req, res) => {
 };
 
 export { listProducts, addProduct, removeProduct, singleProduct, adminListProducts };
-

@@ -16,6 +16,24 @@ const sellerRequest = async (req,res) => {
     
 }
 
+const checkRequestStatus = async (req, res) => {
+    try {
+        const user_id = req.userId || req.body.user_id;
+        const { rows } = await pool.query(
+            "SELECT status FROM sellerRequest WHERE user_id=$1 ORDER BY date DESC LIMIT 1",
+            [user_id]
+        );
+        if (rows.length > 0) {
+            res.status(200).json({ success: true, status: rows[0].status });
+        } else {
+            res.status(200).json({ success: true, status: null });
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 const getSellerRequest = async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -78,4 +96,4 @@ const verifySellerRequest = async (req,res) => {
 }
 
 
-export {sellerRequest,verifySellerRequest,getSellerRequest}
+export {sellerRequest,verifySellerRequest,getSellerRequest,checkRequestStatus}

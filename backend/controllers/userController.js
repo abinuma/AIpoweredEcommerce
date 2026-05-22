@@ -160,6 +160,24 @@ const adminLogin = async (req, res) => {
   }
 };
 
-export { loginUser, registerUser, adminLogin };
+const getProfile = async (req, res) => {
+  try {
+    const userId = req.userId || req.body.user_id;
+    if (!userId) {
+      return res.json({ success: false, message: "Not authenticated" });
+    }
+    const { rows } = await pool.query("SELECT id, name, email, role FROM users WHERE id = $1", [userId]);
+    if (rows.length > 0) {
+      return res.json({ success: true, user: rows[0] });
+    } else {
+      return res.json({ success: false, message: "User not found" });
+    }
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+export { loginUser, registerUser, adminLogin, getProfile };
 
 

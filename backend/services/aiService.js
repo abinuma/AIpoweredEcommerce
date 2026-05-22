@@ -238,10 +238,12 @@ ${reviewList}
 
 Respond ONLY with valid JSON:
 {
-  "summary": "A concise 2-3 sentence overall summary",
+  "summary": "1 single sentence summarizing the overall sentiment.",
   "pros": ["pro 1", "pro 2", "pro 3"],
   "cons": ["con 1", "con 2", "con 3"]
-}`;
+}
+Limit pros and cons to EXACTLY 3 each. Keep them very short (2-4 words).
+The summary MUST be exactly one single sentence.`;
 
     const text = await generateAIResponse(prompt);
     if (!text) {
