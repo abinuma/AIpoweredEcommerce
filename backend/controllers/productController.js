@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 
 const CATEGORIES_WITH_SIZES = {
   Clothing: ["S", "M", "L", "XL", "XXL"],
-  Shoes: ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46"],
+  Shoes: ["30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46"],
 };
 
 const SPEC_REQUIREMENTS = {
