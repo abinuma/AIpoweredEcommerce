@@ -13,7 +13,7 @@ const SellerRequest = () => {
   const [longitude, setLongitude] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [locLoading, setLocLoading] = useState(false);  
+  const [locLoading, setLocLoading] = useState(false);
   const [requestStatus, setRequestStatus] = useState(null);
   const [checking, setChecking] = useState(true);
 
@@ -52,13 +52,15 @@ const SellerRequest = () => {
     setSubmitting(true);
     try {
       const res = await axios.post(backendUrl + "/api/request/seller-request",
-        { shop_name: shopName, 
+        {
+          shop_name: shopName,
           shop_description: shopDescription,
-          business_detail: businessDetail, 
-          latitude: parseFloat(latitude) || null, longitude: parseFloat(longitude) || null },
+          business_detail: businessDetail,
+          latitude: parseFloat(latitude) || null, longitude: parseFloat(longitude) || null
+        },
         { headers: { Authorization: token } }
       );
-      if (res.data.success) { setSubmitted(true); } 
+      if (res.data.success) { setSubmitted(true); }
       else { toast.error(res.data.message); }
     } catch (e) { toast.error(e.response?.data?.message || e.message); }
     setSubmitting(false);
@@ -93,7 +95,7 @@ const SellerRequest = () => {
       <div className="flex flex-col items-center justify-center py-20 text-center px-4">
         <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-2xl mb-4">✓</div>
         <h2 className="text-2xl font-medium mb-2">You&apos;re a Seller</h2>
-        <p className="text-gray-500 max-w-md">Your seller account is active. Manage products from the seller panel.</p>
+        <p className="text-gray-500 max-w-md">Your seller account is active. Manage products from the seller panel.Try reloadin the page </p>
         <button onClick={() => navigate("/seller")} className="mt-6 bg-black text-white px-8 py-3 text-sm">Go to Seller Panel</button>
       </div>
     );
@@ -109,24 +111,24 @@ const SellerRequest = () => {
         </div>
 
         <div className="w-full">
-  <p className="mb-1 text-sm font-medium">Short Shop Description *</p>
+          <p className="mb-1 text-sm font-medium">Short Shop Description *</p>
 
-  <input
-    value={shopDescription}
-    onChange={(e) => {
-      if (e.target.value.length <= 30) {
-        setShopDescription(e.target.value);
-      }
-    }}
-    className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-gray-500"
-    placeholder="Fashion, Electronics..."
-    required
-  />
+          <input
+            value={shopDescription}
+            onChange={(e) => {
+              if (e.target.value.length <= 30) {
+                setShopDescription(e.target.value);
+              }
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-gray-500"
+            placeholder="Fashion, Electronics..."
+            required
+          />
 
-  <p className="text-xs text-gray-400 mt-1">
-    {shopDescription.length}/30 characters
-  </p>
-</div>
+          <p className="text-xs text-gray-400 mt-1">
+            {shopDescription.length}/30 characters
+          </p>
+        </div>
 
         <div className="w-full">
           <p className="mb-1 text-sm font-medium">Business Details *</p>

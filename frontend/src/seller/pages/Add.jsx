@@ -57,7 +57,7 @@ const Add = ({ token }) => {
       setSizeDropdownStyle({
         position: "fixed",
         left: rect.left,
-        width: Math.max(rect.width, 160),
+        width: Math.max(rect.width, 80),
         zIndex: 60,
         maxHeight: Math.min(preferredMax, Math.max(96, available)),
         ...(openUp

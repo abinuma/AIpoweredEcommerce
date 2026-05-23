@@ -8,7 +8,7 @@ export const specificationsConfig = {
   },
   Shoes: {
     subcategories: ["Sneakers", "Boots", "Sandals", "Formal"],
-    availableSizes: ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46"],
+    availableSizes: ["30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46"],
     fields: [
       { name: "brand", label: "Brand", type: "text", required: true },
       { name: "Audience", label: "Audience", type: "select", options: ["Men", "Women", "Kids"], required: true },
