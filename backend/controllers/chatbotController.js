@@ -101,7 +101,7 @@ const userMessageId = userMessageRows[0].id;
       const { rows } = await pool.query(
         `SELECT p.*
                  FROM products p
-                 WHERE ${conditions.join(" OR ")}
+                 WHERE p.restricted = false AND (${conditions.join(" OR ")})
                  ORDER BY p.bestseller DESC, p.date DESC
                  LIMIT 40`,
         patterns,
@@ -113,6 +113,7 @@ const userMessageId = userMessageRows[0].id;
       const { rows } = await pool.query(
         `SELECT p.*
                  FROM products p
+                 WHERE p.restricted = false
                  ORDER BY p.bestseller DESC, p.date DESC
                  LIMIT 40`,
       );
@@ -172,7 +173,7 @@ const assistantMessageId = assistantRows[0].id;
         .join(", ");
       const { rows } = await pool.query(
         `SELECT id AS "_id", name, description, price, image, category, sub_category AS "subCategory", sizes, bestseller, date
-                 FROM products WHERE id IN (${placeholders})`,
+                 FROM products WHERE restricted = false AND id IN (${placeholders})`,
         aiResult.suggestedProducts,
       );
       suggestedProducts = rows;

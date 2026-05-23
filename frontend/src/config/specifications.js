@@ -2,14 +2,16 @@ export const specificationsConfig = {
   Clothing: {
     subcategories: ["Topwear", "Bottomwear", "Winterwear"],
     availableSizes: ["S", "M", "L", "XL", "XXL"],
-    fields: [] // Handled using existing sizes
+    fields: [
+      { name: "Audience", label: "Audience", type: "select", options: ["Men", "Women", "Kids"], required: true },
+    ]
   },
   Shoes: {
     subcategories: ["Sneakers", "Boots", "Sandals", "Formal"],
     availableSizes: ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46"],
     fields: [
       { name: "brand", label: "Brand", type: "text", required: true },
-      { name: "gender", label: "Gender", type: "select", options: ["Men", "Women", "Kids"], required: true },
+      { name: "Audience", label: "Audience", type: "select", options: ["Men", "Women", "Kids"], required: true },
       { name: "material", label: "Material", type: "text", required: false },
       { name: "soleType", label: "Sole Type", type: "text", required: false },
       { name: "color", label: "Color", type: "text", required: true },

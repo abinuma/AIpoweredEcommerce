@@ -1,12 +1,61 @@
 import { v2 as cloudinary } from "cloudinary";
 import { pool } from "../config/postgres.js";
 import jwt from "jsonwebtoken";
+
+const CATEGORIES_WITH_SIZES = {
+  Clothing: ["S", "M", "L", "XL", "XXL"],
+  Shoes: ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46"],
+};
+
+const SPEC_REQUIREMENTS = {
+  Clothing: { fields: ["Audience"] },
+  Shoes: { fields: ["brand", "Audience", "color"] },
+  Beauty: { fields: ["skinType", "ingredients", "expiryDate", "brand"] },
+};
+
+const parseSizesInput = (sizes) => {
+  if (sizes == null || sizes === "") return [];
+  if (Array.isArray(sizes)) return sizes;
+  if (typeof sizes === "string") {
+    try {
+      const parsed = JSON.parse(sizes);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+const normalizeSizeEntries = (sizes) => {
+  if (!Array.isArray(sizes)) return [];
+  return sizes
+    .map((entry) => {
+      if (typeof entry === "string") {
+        return { size: entry.trim(), stock: 0 };
+      }
+      if (entry && typeof entry === "object" && entry.size != null) {
+        return {
+          size: String(entry.size).trim(),
+          stock: Number(entry.stock) || 0,
+        };
+      }
+      return null;
+    })
+    .filter((entry) => entry && entry.size);
+};
+
 // function for add product
-
-const allowedSizes = ["S", "M", "L", "XL", "XXL"];
-const sizeOrder = ["S", "M", "L", "XL", "XXL"];
-
-const getProductValidationError = ({ name, description, price, category, subCategory, sizes, images }) => {
+const getProductValidationError = ({
+  name,
+  description,
+  price,
+  category,
+  subCategory,
+  sizes,
+  images,
+  specifications,
+}) => {
   if (!name?.trim()) return "Product name is required";
   if (!description?.trim()) return "Product description is required";
   if (!category?.trim()) return "Product category is required";
@@ -18,7 +67,29 @@ const getProductValidationError = ({ name, description, price, category, subCate
     return "Product price must be greater than 0";
   }
   if (!Array.isArray(sizes)) {
-    return "Sizes must be an array";
+    return "Sizes must be a valid list";
+  }
+  if (CATEGORIES_WITH_SIZES[category] && sizes.length === 0) {
+    return "Select at least one product size";
+  }
+  if (CATEGORIES_WITH_SIZES[category]) {
+    const allowed = CATEGORIES_WITH_SIZES[category];
+    for (const entry of sizes) {
+      const label = typeof entry === "string" ? entry : entry?.size;
+      if (!label || !allowed.includes(String(label))) {
+        return `Invalid size "${label || ""}" for ${category}`;
+      }
+    }
+  }
+  const specRule = SPEC_REQUIREMENTS[category];
+  if (specRule?.fields) {
+    for (const field of specRule.fields) {
+      const value = specifications?.[field];
+      if (value === undefined || value === null || String(value).trim() === "") {
+        const label = field === "Audience" ? "Audience" : field;
+        return `${label} is required`;
+      }
+    }
   }
   if (!Array.isArray(images) || images.length === 0) {
     return "Upload at least one product image";
@@ -28,7 +99,6 @@ const getProductValidationError = ({ name, description, price, category, subCate
 
 const addProduct = async (req, res) => {
   try {
-    if (req.role === 'admin') {
     if (req.role === 'admin') {
       return res.status(403).json({ success: false, message: "Admins cannot add products" });
     }
@@ -54,16 +124,14 @@ const addProduct = async (req, res) => {
       (item) => item !== undefined,
     );
 
-    let parsedSizes = [];
-    try {
-      parsedSizes = sizes ? JSON.parse(sizes) : [];
-    } catch (error) {
-      parsedSizes = typeof sizes === 'string' ? [sizes] : [];
-    }
-    
+    const parsedSizes = normalizeSizeEntries(parseSizesInput(sizes));
+
     let parsedSpecs = {};
     try {
       parsedSpecs = specifications ? JSON.parse(specifications) : {};
+      if (parsedSpecs === null || typeof parsedSpecs !== "object" || Array.isArray(parsedSpecs)) {
+        return res.status(400).json({ success: false, message: "Invalid specifications format" });
+      }
     } catch (error) {
       return res.status(400).json({ success: false, message: "Invalid specifications format" });
     }
@@ -76,6 +144,7 @@ const addProduct = async (req, res) => {
       subCategory,
       sizes: parsedSizes,
       images,
+      specifications: parsedSpecs,
     });
 
     if (validationError) {
@@ -91,7 +160,6 @@ const addProduct = async (req, res) => {
       }),
     );
 
-// sort according to predefined order
     const productData = {
       name,
       seller_id,
@@ -139,11 +207,11 @@ const addProduct = async (req, res) => {
     res.json({ success: true, message: "Product added" });
   } catch (error) {
     console.log(error);
-    res.json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message || "Failed to add product" });
   }
 };
 
-// function for list products
+// function for list products (customer-facing — excludes restricted products)
 const listProducts = async (req, res) => {
   try {
     let seller_id = req.query.seller_id || null;
@@ -160,76 +228,54 @@ const listProducts = async (req, res) => {
           seller_id = tokenDecoded.id;
         }
       } catch (error) {
-        return res.status(401).json({ success: false, message: "not authorized login again" });
+        // token invalid — just proceed without seller filter
       }
     }
 
-    let productRows ;
+    let productRows;
     if (!seller_id) {
       const result = await pool.query(
-      `SELECT
-        id AS "_id",
-        name,
-        seller_id,
-        description,
-        price,
-        image,
-        category,
-        sub_category AS "subCategory",
-        sizes,
-        bestseller,
-        date
-      FROM products 
-      ORDER BY date DESC`,
-    );
-      productRows = result.rows  
-  } else{
+        `SELECT
+          id AS "_id",
+          name,
+          seller_id,
+          description,
+          price,
+          image,
+          category,
+          sub_category AS "subCategory",
+          sizes,
+          bestseller,
+          date,
+          specifications,
+          stock_quantity AS "stockQuantity"
+        FROM products
+        WHERE restricted = false
+        ORDER BY date DESC`,
+      );
+      productRows = result.rows;
+    } else {
       const result = await pool.query(
-      `SELECT
-        id AS "_id",
-        name,
-    if (!seller_id) {
-      const result = await pool.query(
-      `SELECT
-        id AS "_id",
-        name,
-        seller_id,
-        description,
-        price,
-        image,
-        category,
-        sub_category AS "subCategory",
-        sizes,
-        bestseller,
-        date,
-        specifications,
-        stock_quantity AS "stockQuantity"
-      FROM products 
-      ORDER BY date DESC`,
-    );
-      productRows = result.rows  
-  } else{
-      const result = await pool.query(
-      `SELECT
-        id AS "_id",
-        name,
-        seller_id,
-        description,
-        price,
-        image,
-        category,
-        sub_category AS "subCategory",
-        sizes,
-        bestseller,
-        date,
-        specifications,
-        stock_quantity AS "stockQuantity"
-      FROM products WHERE seller_id = $1
-      ORDER BY date DESC`,
-      [seller_id]
-    );
-      productRows = result.rows  
-  }
+        `SELECT
+          id AS "_id",
+          name,
+          seller_id,
+          description,
+          price,
+          image,
+          category,
+          sub_category AS "subCategory",
+          sizes,
+          bestseller,
+          date,
+          specifications,
+          stock_quantity AS "stockQuantity"
+        FROM products WHERE seller_id = $1
+        ORDER BY date DESC`,
+        [seller_id]
+      );
+      productRows = result.rows;
+    }
     
     res.json({ success: true, products: productRows });
   } catch (error) {
@@ -276,31 +322,67 @@ const singleProduct = async (req, res) => {
         bestseller,
         date,
         specifications,
-        stock_quantity AS "stockQuantity"
+        stock_quantity AS "stockQuantity",
+        restricted
       FROM products
       WHERE id = $1
       LIMIT 1`,
       [productId],
     );
-    res.json({ success: true, product: rows[0] });
+    const product = rows[0];
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    if (product.restricted) {
+      let canView = false;
+      const token = req.headers.authorization;
+      if (token) {
+        try {
+          const tokenDecoded = jwt.verify(token, process.env.JWT_SECRET);
+          const { rows: userRows } = await pool.query(
+            "SELECT role FROM users WHERE id=$1 LIMIT 1",
+            [tokenDecoded.id],
+          );
+          const role = userRows[0]?.role;
+          canView =
+            role === "admin" ||
+            (role === "seller" && product.seller_id === tokenDecoded.id);
+        } catch {
+          canView = false;
+        }
+      }
+      if (!canView) {
+        return res.status(404).json({ success: false, message: "Product not available" });
+      }
+    }
+
+    res.json({ success: true, product });
   } catch (error) {
     console.log(error);
-    res.json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// function for admin/seller product list
+// function for admin/seller product list (includes restricted products with status)
 const adminListProducts = async (req, res) => {
   try {
     let result;
     if (req.role === 'admin') {
       result = await pool.query(
-        `SELECT id AS "_id", seller_id, name, description, price, image, category, sub_category AS "subCategory", sizes, bestseller, date, specifications, stock_quantity AS "stockQuantity"
-         FROM products ORDER BY date DESC`
+        `SELECT p.id AS "_id", p.seller_id, p.name, p.description, p.price, p.image, p.category,
+                p.sub_category AS "subCategory", p.sizes, p.bestseller, p.date, p.specifications,
+                p.stock_quantity AS "stockQuantity", p.restricted,
+                u.shop_name AS "shopName", u.name AS "sellerName"
+         FROM products p
+         LEFT JOIN users u ON p.seller_id = u.id
+         ORDER BY p.date DESC`
       );
     } else {
       result = await pool.query(
-        `SELECT id AS "_id", seller_id, name, description, price, image, category, sub_category AS "subCategory", sizes, bestseller, date, specifications, stock_quantity AS "stockQuantity"
+        `SELECT id AS "_id", seller_id, name, description, price, image, category,
+                sub_category AS "subCategory", sizes, bestseller, date, specifications,
+                stock_quantity AS "stockQuantity", restricted
          FROM products WHERE seller_id = $1 ORDER BY date DESC`,
         [req.userId]
       );
@@ -312,4 +394,28 @@ const adminListProducts = async (req, res) => {
   }
 };
 
-export { listProducts, addProduct, removeProduct, singleProduct, adminListProducts };
+// Restrict a product (admin only)
+const restrictProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query("UPDATE products SET restricted = true WHERE id = $1", [id]);
+    res.json({ success: true, message: "Product restricted" });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// Unrestrict a product (admin only)
+const unrestrictProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query("UPDATE products SET restricted = false WHERE id = $1", [id]);
+    res.json({ success: true, message: "Product unrestricted" });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+export { listProducts, addProduct, removeProduct, singleProduct, adminListProducts, restrictProduct, unrestrictProduct };

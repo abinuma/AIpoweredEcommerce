@@ -107,7 +107,7 @@ const Login = () => {
       </div>
       <button disabled={loading} className="bg-black text-white font-light px-8 py-2 mt-4 disabled:opacity-70 disabled:cursor-not-allowed">
         {loading 
-          ? (currentState === "Login" ? "Logging in..." : "Signing up...") 
+          ? (currentState === "Login" ? "Signing in..." : "Signing up...") 
           : (currentState === "Login" ? "Sign In" : "Sign Up")
         }
       </button>

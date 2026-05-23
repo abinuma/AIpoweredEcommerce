@@ -7,7 +7,7 @@ const currency = 'USD';
 const deliveryCharge = 10;
 
 
-//getway intialize
+//gateway initialize
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const getItemProductId = (item) => item._id || item.id || item.productId;
@@ -114,7 +114,6 @@ const insertSellerOrders = async ({ userId, groups, address, paymentMethod, paym
 };
 
 // placing orders using COD method
-
 const placeOrder = async (req,res) => {
     try {
         const userId = req.userId;
@@ -140,8 +139,8 @@ const placeOrder = async (req,res) => {
         res.json({success: false, message: error.message})
     }
 }
-// placing orders using stripe method
 
+// placing orders using stripe method
 const placeOrderStripe = async (req,res) => {
     try {
         const userId = req.userId;
@@ -162,7 +161,6 @@ const placeOrderStripe = async (req,res) => {
                 currency: currency,
                 product_data: {
                     name: item.name,
-
                 },  
                 unit_amount: Math.round(item.price * 100)
             },
@@ -196,7 +194,6 @@ const placeOrderStripe = async (req,res) => {
 }
 
 //verify stripe
-
 const verifyStripe = async (req,res) => {
     const userId = req.userId;
     const {success, orderId} = req.body;
@@ -234,7 +231,6 @@ const verifyStripe = async (req,res) => {
 }
 
 //placing orders using razorpay method
-
 const placeOrderRazorpay = async (req,res) =>{
     try {
         res.status(501).json({ success: false, message: "Razorpay is not yet implemented" });
@@ -244,23 +240,27 @@ const placeOrderRazorpay = async (req,res) =>{
     }
 }
 
-// All orders data for admin panel
+// All orders data for admin panel — includes seller/shop info for admin analytics
 const allOrders = async (req,res) => {
     try {
         let ordersRows;
         if (req.role === 'admin') {
             const { rows } = await pool.query(
               `SELECT
-                id AS "_id",
-                items,
-                amount,
-                address,
-                status,
-                payment_method AS "paymentMethod",
-                payment,
-                date
-              FROM orders
-              ORDER BY date DESC`
+                o.id AS "_id",
+                o.items,
+                o.amount,
+                o.address,
+                o.status,
+                o.payment_method AS "paymentMethod",
+                o.payment,
+                o.date,
+                o.seller_id,
+                u.shop_name AS "shopName",
+                u.name AS "sellerName"
+              FROM orders o
+              LEFT JOIN users u ON o.seller_id = u.id
+              ORDER BY o.date DESC`
             );
             ordersRows = rows;
         } else {
@@ -287,6 +287,7 @@ const allOrders = async (req,res) => {
         res.json({success: false, message: error.message})
     }
 }
+
 // user order data for frontend
 const userOrders = async (req,res) => {
     try {
@@ -307,27 +308,25 @@ const userOrders = async (req,res) => {
           [userId],
         );
         res.json({success: true, orders: rows})
-        // console.log(orders)
     } catch (error) {
         console.log(error)
         res.json({success: false, message: error.message})
     }
 }
 
-//update order status from admin panel
+// update order status — SELLERS ONLY for their own orders
 const updateStatus = async (req,res) => {
     try {
         const {orderId, status} = req.body;
         if (req.role === 'admin') {
-            await pool.query(
-              "UPDATE orders SET status = $2 WHERE id = $1",
-              [orderId, status],
-            );
-        } else {
-            await pool.query(
-              "UPDATE orders SET status = $2 WHERE id = $1 AND seller_id = $3",
-              [orderId, status, req.userId],
-            );
+            return res.status(403).json({ success: false, message: "Admins cannot update order status. Only sellers can." });
+        }
+        const { rowCount } = await pool.query(
+          "UPDATE orders SET status = $2 WHERE id = $1 AND seller_id = $3",
+          [orderId, status, req.userId],
+        );
+        if (rowCount === 0) {
+            return res.status(403).json({ success: false, message: "You can only update orders for your own shop" });
         }
         res.json({success: true, message: 'Status Updated'})
     } catch (error) {
@@ -336,5 +335,4 @@ const updateStatus = async (req,res) => {
     }
 }
 
-export {verifyStripe,placeOrder, placeOrderStripe, placeOrderRazorpay, allOrders, userOrders, updateStatus}
-
+export {verifyStripe, placeOrder, placeOrderStripe, placeOrderRazorpay, allOrders, userOrders, updateStatus}

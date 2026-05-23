@@ -166,28 +166,28 @@ export const scoreProductForIntent = (product, intent) => {
   return score;
 };
 
-const localProductDescription = ({ name, category, subCategory, sizes, price, keywords }) => {
+const sanitizeDescription = (text = "") => {
+  if (!text) return "";
+  return String(text)
+    .replace(/\[object Object\]/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const localProductDescription = ({ name, category, subCategory, keywords }) => {
   const cleanName = name || "This product";
-  const sizeText =
-    Array.isArray(sizes) && sizes.length > 0
-      ? ` Available in ${sizes.join(", ")}.`
-      : "";
-  const priceText = price
-    ? ` At $${price}, it is positioned for shoppers who want style and everyday value.`
-    : "";
-  const notes = keywords ? ` Seller notes: ${keywords}.` : "";
+  const notes = keywords ? ` ${keywords.trim()}.` : "";
 
   return {
-    description:
+    description: sanitizeDescription(
       `${cleanName} is a versatile ${category || "fashion"} item${
         subCategory ? ` in the ${subCategory.toLowerCase()} range` : ""
-      }, designed for customers who want comfort, easy styling, and dependable everyday wear.${notes}${priceText}\n\nIts clean look makes it simple to pair with different outfits, while the product details help it stand out in search for shoppers browsing quality ${
-        category || "fashion"
-      } pieces.${sizeText}`,
+      }, designed for comfort, easy styling, and dependable everyday wear.${notes} Its clean design makes it simple to pair with different outfits while maintaining a modern, polished look.`,
+    ),
     highlights: [
       "Comfort-focused everyday design",
-      "SEO-friendly product copy",
-      "Easy to style for multiple occasions",
+      "Versatile styling options",
+      "Modern polished look",
     ],
   };
 };
@@ -322,23 +322,29 @@ Example: [3, 1, 2]`;
 
 export const generateProductDescription = async (productInfo) => {
   try {
-    const { name, category, subCategory, sizes, price, keywords } = productInfo;
+    const { name, category, subCategory, keywords } = productInfo;
 
-    const prompt = `You are an expert e-commerce copywriter and SEO specialist.
+    const prompt = `You are an expert e-commerce copywriter.
 
-Create marketing-ready product copy from these seller inputs:
+Write a short, single-paragraph product description for an online store.
+
+Product info:
 - Name: ${name}
 - Category: ${category}
-- Sub-category: ${subCategory || "Not specified"}
-- Price: ${price || "Not specified"}
-- Sizes: ${Array.isArray(sizes) ? sizes.join(", ") : sizes || "Not specified"}
-- Seller notes/features: ${keywords || "Not specified"}
+- Sub-category: ${subCategory || "General"}
+- Seller notes: ${keywords || "None"}
 
-Write a professional description for shoppers, with natural SEO keywords. Use a confident, polished tone.
+Rules:
+- Do NOT mention price or cost.
+- Do NOT mention sizes or size options.
+- Do NOT use placeholder text like "[object Object]".
+- Keep it to ONE short paragraph (2-4 sentences max).
+- Use a clean, modern, natural e-commerce tone.
+- Include natural SEO keywords.
 
 Respond ONLY with valid JSON:
 {
-  "description": "2 short paragraphs of professional marketing and SEO-friendly copy",
+  "description": "single paragraph description here",
   "highlights": ["key feature 1", "key feature 2", "key feature 3"]
 }`;
 
@@ -346,8 +352,10 @@ Respond ONLY with valid JSON:
     if (!text) return localProductDescription(productInfo);
 
     const parsed = parseJsonFromText(text);
+    if (!parsed?.description) return localProductDescription(productInfo);
+
     return {
-      description: parsed.description || "",
+      description: sanitizeDescription(parsed.description),
       highlights: Array.isArray(parsed.highlights) ? parsed.highlights : [],
     };
   } catch (error) {
@@ -370,7 +378,10 @@ Current product description for "${name}" (${category}):
 
 Seller instruction: ${instruction}
 
-Rewrite it professionally and keep it SEO-friendly.
+Rules:
+- Do NOT mention price or sizes.
+- Keep ONE short paragraph (2-4 sentences max).
+- Clean, modern, natural tone.
 
 Respond ONLY with valid JSON:
 {
@@ -382,8 +393,10 @@ Respond ONLY with valid JSON:
     if (!text) return localProductDescription({ ...productInfo, keywords: instruction });
 
     const parsed = parseJsonFromText(text);
+    if (!parsed?.description) return localProductDescription({ ...productInfo, keywords: instruction });
+
     return {
-      description: parsed.description || "",
+      description: sanitizeDescription(parsed.description),
       highlights: Array.isArray(parsed.highlights) ? parsed.highlights : [],
     };
   } catch (error) {

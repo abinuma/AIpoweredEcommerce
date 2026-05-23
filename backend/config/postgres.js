@@ -55,6 +55,7 @@ const connectDB = async () => {
     ALTER TABLE products ADD COLUMN IF NOT EXISTS seller_id uuid REFERENCES users(id) ON DELETE CASCADE;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_quantity integer NOT NULL DEFAULT 0;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS specifications jsonb NOT NULL DEFAULT '{}'::jsonb;
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS restricted boolean NOT NULL DEFAULT false;
 
     CREATE TABLE IF NOT EXISTS chat_sessions(
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -118,6 +119,8 @@ const connectDB = async () => {
       date bigint NOT NULL
     );
     ALTER TABLE sellerRequest ADD COLUMN IF NOT EXISTS shop_description VARCHAR(30);
+    ALTER TABLE sellerRequest ALTER COLUMN latitude DROP NOT NULL;
+    ALTER TABLE sellerRequest ALTER COLUMN longitude DROP NOT NULL;
 
     CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
     CREATE INDEX IF NOT EXISTS idx_orders_seller_id ON orders(seller_id);

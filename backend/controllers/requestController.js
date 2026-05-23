@@ -4,9 +4,40 @@ const sellerRequest = async (req,res) => {
     try {
         const {shop_name,shop_description,business_detail,latitude,longitude} = req.body;
         const user_id = req.userId || req.body.user_id;
+
+        if (!shop_name?.trim()) {
+            return res.status(400).json({ success: false, message: "Shop name is required" });
+        }
+        if (!shop_description?.trim()) {
+            return res.status(400).json({ success: false, message: "Shop description is required" });
+        }
+        if (!business_detail?.trim()) {
+            return res.status(400).json({ success: false, message: "Business details are required" });
+        }
+
+        const { rows: userRows } = await pool.query(
+            "SELECT role FROM users WHERE id=$1 LIMIT 1",
+            [user_id]
+        );
+        if (userRows[0]?.role === "seller") {
+            return res.status(400).json({ success: false, message: "You are already a seller." });
+        }
+
+        // Check for existing pending request
+        const { rows: existing } = await pool.query(
+            "SELECT id FROM sellerRequest WHERE user_id=$1 AND status='pending' LIMIT 1",
+            [user_id]
+        );
+        if (existing.length > 0) {
+            return res.status(400).json({ success: false, message: "Your seller request is pending approval." });
+        }
+
+        const lat = latitude != null && latitude !== "" ? Number(latitude) : null;
+        const lng = longitude != null && longitude !== "" ? Number(longitude) : null;
+
         await pool.query(
             "INSERT INTO sellerRequest (user_id,shop_name,shop_description,business_detail,latitude,longitude,date) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING * ",
-            [user_id,shop_name,shop_description,business_detail,latitude,longitude,Date.now()]
+            [user_id, shop_name.trim(), shop_description.trim(), business_detail.trim(), lat, lng, Date.now()]
         )
         res.status(200).json({success:true,message:"Request sent successfully"})
     } catch (error) {

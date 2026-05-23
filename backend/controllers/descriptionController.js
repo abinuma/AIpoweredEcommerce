@@ -2,13 +2,13 @@ import { generateProductDescription, regenerateProductDescription } from "../ser
 
 const generateDescription = async (req, res) => {
     try {
-        const { name, category, subCategory, sizes, price, keywords } = req.body;
+        const { name, category, subCategory, keywords } = req.body;
 
         if (!name || !category) {
             return res.status(400).json({ success: false, message: "name and category are required" });
         }
 
-        const result = await generateProductDescription({ name, category, subCategory, sizes, price, keywords });
+        const result = await generateProductDescription({ name, category, subCategory, keywords });
 
         if (!result) {
             return res.status(503).json({ success: false, message: "AI service unavailable, please try again" });

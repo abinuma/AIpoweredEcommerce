@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { assets } from "../../assets/assets";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -26,17 +26,54 @@ const Add = ({ token }) => {
   const [stockQuantity, setStockQuantity] = useState(""); // global stock for items without sizes
   const [specifications, setSpecifications] = useState({});
   const [showSizeDropdown, setShowSizeDropdown] = useState(false);
+  const [sizeDropdownStyle, setSizeDropdownStyle] = useState({});
   const dropdownRef = useRef(null);
+  const sizePanelRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      const inTrigger = dropdownRef.current?.contains(event.target);
+      const inPanel = sizePanelRef.current?.contains(event.target);
+      if (!inTrigger && !inPanel) {
         setShowSizeDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!showSizeDropdown || !dropdownRef.current) return;
+
+    const updatePosition = () => {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      const margin = 8;
+      const preferredMax = 200;
+      const spaceBelow = window.innerHeight - rect.bottom - margin;
+      const spaceAbove = rect.top - margin;
+      const openUp = spaceBelow < 140 && spaceAbove > spaceBelow;
+      const available = openUp ? spaceAbove : spaceBelow;
+
+      setSizeDropdownStyle({
+        position: "fixed",
+        left: rect.left,
+        width: Math.max(rect.width, 160),
+        zIndex: 60,
+        maxHeight: Math.min(preferredMax, Math.max(96, available)),
+        ...(openUp
+          ? { bottom: window.innerHeight - rect.top + margin }
+          : { top: rect.bottom + margin }),
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [showSizeDropdown]);
 
   const handleCategoryChange = (e) => {
     const newCat = e.target.value;
@@ -102,12 +139,12 @@ const Add = ({ token }) => {
     setAiGenerating(true);
     try {
       const res = await axios.post(backendUrl + '/api/description/generate',
-        { name, category, subCategory, sizes, price, keywords },
+        { name, category, subCategory, keywords },
         { headers: { authorization: token } }
       );
       if (res.data.success) { setDescription(res.data.description); setShowRegen(true); }
       else toast.error(res.data.message);
-    } catch (e) { toast.error(e.message); }
+    } catch (e) { toast.error(e.response?.data?.message || e.message); }
     setAiGenerating(false);
   };
 
@@ -173,7 +210,7 @@ const Add = ({ token }) => {
       }
     } catch (error) {
       console.log(error)
-      toast.error(error.message)
+      toast.error(error.response?.data?.message || error.message)
     }
   }
 
@@ -379,13 +416,17 @@ const Add = ({ token }) => {
             </div>
 
             {showSizeDropdown && (
-              <div className=" absolute top-full left-0 w-40 mt-1 bg-white border border-gray-200 rounded shadow-lg z-10 max-h-48 overflow-y-auto">
+              <div
+                ref={sizePanelRef}
+                className="bg-white border border-gray-200 rounded shadow-lg overflow-y-auto overscroll-contain"
+                style={sizeDropdownStyle}
+              >
                 {availableSizes.map(sz => {
                   const isSelected = sizes.some(s => s.size === sz);
                   return (
                     <div
                       key={sz}
-                      className={`w-40 px-4 py-2 cursor-pointer hover:bg-gray-50 flex items-center justify-between ${isSelected ? 'bg-blue-50' : ''}`}
+                      className={`px-4 py-2 cursor-pointer hover:bg-gray-50 flex items-center justify-between ${isSelected ? 'bg-blue-50' : ''}`}
                       onClick={() => toggleSize(sz)}
                     >
                       <span className={isSelected ? 'font-medium text-blue-600' : 'text-gray-700'}>

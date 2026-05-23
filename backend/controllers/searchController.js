@@ -36,7 +36,7 @@ const searchProducts = async (req, res) => {
         const intent = getSearchIntent(query);
         const terms = intent.terms.slice(0, 10);
         const params = [];
-        const filters = [];
+        const filters = ["p.restricted = false"];
 
         if (terms.length > 0) {
             const termConditions = terms.map((term) => {
@@ -90,7 +90,7 @@ const searchProducts = async (req, res) => {
                 `SELECT p.*, u.name AS seller_name, u.shop_name AS seller_shop
                  FROM products p
                  JOIN users u ON p.seller_id = u.id
-                 WHERE ${fallbackConditions.join(" OR ")}
+                 WHERE p.restricted = false AND (${fallbackConditions.join(" OR ")})
                  ORDER BY p.bestseller DESC, p.date DESC
                  LIMIT 100`,
                 fallbackParams
@@ -103,6 +103,7 @@ const searchProducts = async (req, res) => {
                 `SELECT p.*, u.name AS seller_name, u.shop_name AS seller_shop
                  FROM products p
                  JOIN users u ON p.seller_id = u.id
+                 WHERE p.restricted = false
                  ORDER BY p.bestseller DESC, p.date DESC
                  LIMIT 100`
             );

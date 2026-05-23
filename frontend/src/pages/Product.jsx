@@ -1,9 +1,10 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useMemo } from "react";
 import { ShopContext } from "../context/ShopContext";
 import { useParams } from "react-router-dom";
 import RelatedProducts from "../components/RelatedProducts";
 import ReviewSection from "../components/ReviewSection";
 import ReviewSummary from "../components/ReviewSummary";
+import { normalizeProductSizes } from "../utils/productSizes";
 
 const Product = () => {
   const { products, currency, addToCart, backendUrl } = useContext(ShopContext);
@@ -41,6 +42,11 @@ const Product = () => {
   useEffect(() => {
     fetchProductData();
   }, [productId, products]);
+
+  const sizeOptions = useMemo(
+    () => normalizeProductSizes(productData?.sizes),
+    [productData?.sizes],
+  );
 
   const renderStars = (rating) => {
     return Array(5).fill(0).map((_, i) => (
@@ -83,22 +89,25 @@ const Product = () => {
           <p className="mt-5 text-gray-500 md:w-4/5">
             {productData.description}
           </p>
-          <div className="flex flex-col gap-4 my-8">
-            <p>Select Size</p>
-            <div className="flex gap-2">
-              {(Array.isArray(productData.sizes) ? productData.sizes : (typeof productData.sizes === "string" ? JSON.parse(productData.sizes) : [])).map((item, index) => (
-                <button
-                  onClick={() => setSize(item)}
-                  className={`border py-2 px-4 bg-gray-100 ${item === size ? "border-orange-500" : ""}`}
-                  key={index}
-                >
-                  {item}
-                </button>
-              ))}
+          {sizeOptions.length > 0 && (
+            <div className="flex flex-col gap-4 my-8">
+              <p>Select Size</p>
+              <div className="flex flex-wrap gap-2">
+                {sizeOptions.map((sizeLabel) => (
+                  <button
+                    type="button"
+                    onClick={() => setSize(sizeLabel)}
+                    className={`border py-2 px-4 bg-gray-100 ${sizeLabel === size ? "border-orange-500" : ""}`}
+                    key={sizeLabel}
+                  >
+                    {sizeLabel}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           <button
-            onClick={() => addToCart(productData._id, size)}
+            onClick={() => addToCart(productData._id, sizeOptions.length > 0 ? size : "One Size")}
             className="bg-black text-white px-8 py-3 text-sm active:bg-gray-700"
           >
             ADD TO CART
