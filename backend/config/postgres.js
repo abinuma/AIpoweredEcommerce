@@ -36,6 +36,7 @@ const connectDB = async () => {
       cart_data jsonb NOT NULL DEFAULT '{}'::jsonb
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended boolean NOT NULL DEFAULT false;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS shop_description text;
     ALTER TABLE users ALTER COLUMN latitude TYPE double precision USING latitude::double precision;
     ALTER TABLE users ALTER COLUMN longitude TYPE double precision USING longitude::double precision;
 

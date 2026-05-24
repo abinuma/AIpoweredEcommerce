@@ -105,13 +105,13 @@ const verifySellerRequest = async (req,res) => {
         const {id,status}  = req.body
         if(status === "approved"){
             const {rows} = await pool.query(
-                "SELECT user_id, shop_name, latitude, longitude FROM sellerRequest WHERE id=$1",
+                "SELECT user_id, shop_name, shop_description, latitude, longitude FROM sellerRequest WHERE id=$1",
                 [id]
             )
             const requestData = rows[0]
             await pool.query(
-                "UPDATE users SET role='seller', shop_name=$1, latitude=$2, longitude=$3 WHERE id=$4",
-                [requestData.shop_name, requestData.latitude, requestData.longitude, requestData.user_id]
+                "UPDATE users SET role='seller', shop_name=$1, shop_description=$2, latitude=$3, longitude=$4 WHERE id=$5",
+                [requestData.shop_name, requestData.shop_description, requestData.latitude, requestData.longitude, requestData.user_id]
             )
         }
         await pool.query(

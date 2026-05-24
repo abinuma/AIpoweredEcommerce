@@ -35,7 +35,7 @@ const Shops = () => {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="h-32 bg-gray-100 rounded-xl animate-pulse" />
           ))}
@@ -45,7 +45,7 @@ const Shops = () => {
           Failed to load shops: {error}
         </div>
       ) : shops.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10">
           {shops.map((shop) => (
             <ShopCard key={shop.id} shop={shop} />
           ))}

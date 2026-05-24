@@ -18,7 +18,7 @@ const getNearByShop = async (req, res) => {
         const { rows } = await pool.query(
             `WITH nearby AS (
                 SELECT
-                    id, name, shop_name, latitude, longitude,
+                    id, name, shop_name, shop_description, latitude, longitude,
                     ( 6371 * acos(
                         cos(radians($1)) * cos(radians(latitude))
                         * cos(radians(longitude) - radians($2))
@@ -30,7 +30,7 @@ const getNearByShop = async (req, res) => {
                   AND latitude IS NOT NULL
                   AND longitude IS NOT NULL
             )
-            SELECT id, name, shop_name, latitude, longitude, ROUND(distance_km::numeric, 2) AS distance_km
+            SELECT id, name, shop_name, shop_description, latitude, longitude, ROUND(distance_km::numeric, 2) AS distance_km
             FROM nearby
             WHERE distance_km <= $3
             ORDER BY distance_km ASC
@@ -137,7 +137,7 @@ const updateSellerLocation = async (req, res) => {
 const getAllShops = async (req, res) => {
     try {
         const { rows } = await pool.query(
-            `SELECT id, name, shop_name, latitude, longitude
+            `SELECT id, name, shop_name, shop_description, latitude, longitude
             FROM users
             WHERE role = 'seller' AND suspended = false`
         );
