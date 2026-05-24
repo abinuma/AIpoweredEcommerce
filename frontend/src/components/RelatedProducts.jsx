@@ -3,7 +3,7 @@ import { ShopContext } from "../context/ShopContext";
 import Title from "./Title";
 import ProductItem from "./ProductItem";
 
-const RelatedProducts = ({ category, subCategory,productId }) => {
+const RelatedProducts = ({ category, subCategory,audience,productId }) => {
   const { products } = useContext(ShopContext);
   const [related, setRelated] = useState([]);
   useEffect(() => {
@@ -11,12 +11,12 @@ const RelatedProducts = ({ category, subCategory,productId }) => {
       let productsCopy = products.slice();
       productsCopy = productsCopy.filter((item) => category === item.category);
       productsCopy = productsCopy.filter(
-        (item) => subCategory === item.subCategory
+        (item) => subCategory === item.subCategory && item.specifications?.audience === audience
       );
       productsCopy = productsCopy.filter((item) => item._id !== productId);
       setRelated(productsCopy.slice(0, 5));
     }
-  }, [products,productId,category,subCategory]);
+  }, [products,productId,category,subCategory,audience]);
   return (
     <div className="my-24">
       <div className="text-center text-3xl py-2">

@@ -87,14 +87,28 @@ const List = ({ token }) => {
       ) : (
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           {/* Table header */}
-          <div className="hidden lg:grid grid-cols-[48px_2fr_1fr_1fr_1fr_auto_auto] items-center py-2.5 px-4 bg-gray-50 border-b text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            <span></span>
-            <span>Product</span>
-            <span>Shop</span>
-            <span>Category</span>
-            <span>Price</span>
-            <span>Status</span>
-            <span className="text-center">Action</span>
+          {/* Table header */}
+          <div className="hidden lg:grid grid-cols-[48px_2fr_1fr_1fr_1fr_120px] items-center py-3 px-4 bg-gray-50 border-b text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <div></div>
+
+            <div className="text-left">
+              Product
+            </div>
+
+            <div className="text-left">
+              Shop
+            </div>
+
+            <div className="text-left">
+              Sub Category
+            </div>
+
+            <div className="text-left">
+              Price
+            </div>
+            <div className="text-center">
+              Action
+            </div>
           </div>
 
           {list.length === 0 ? (
@@ -105,64 +119,66 @@ const List = ({ token }) => {
             currentItems.map((item) => (
               <div
                 key={item._id}
-                className={`grid grid-cols-[48px_1fr_auto] lg:grid-cols-[48px_2fr_1fr_1fr_1fr_auto_auto] items-center gap-3 py-3 px-4 border-b border-gray-100 text-sm hover:bg-gray-50/50 transition-colors ${item.restricted ? 'bg-red-50/30' : ''}`}
+                className={`grid grid-cols-[48px_1fr_auto] lg:grid-cols-[48px_2fr_1fr_1fr_1fr_120px] items-center gap-3 py-3 px-4 border-b border-gray-100 text-sm hover:bg-gray-50/50 transition-colors ${item.restricted ? "bg-red-50/30" : ""
+                  }`}
               >
                 {/* Image */}
-                <img className="w-10 h-10 object-cover rounded" src={item.image?.[0] || "/placeholder.jpg"} alt={item.name} />
+                <div className="flex justify-center">
+                  <img
+                    className="w-20 h-15 object-cover rounded"
+                    src={item.image?.[0] || "/placeholder.jpg"}
+                    alt={item.name}
+                  />
+                </div>
 
-                {/* Product name + mobile info */}
+                {/* Product */}
                 <div className="min-w-0">
-                  <p className="font-medium text-gray-800 truncate">{item.name}</p>
-                  <div className="lg:hidden text-xs text-gray-500 flex flex-wrap gap-x-3 mt-0.5 items-center">
-                    <span>{item.shopName || '—'}</span>
-                    <span>{item.category}</span>
-                    <span className="font-medium">{currency}{item.price}</span>
-                    {item.restricted && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>Restricted
-                      </span>
-                    )}
-                  </div>
+                  <p className="font-medium text-gray-800 truncate">
+                    {item.name}
+                  </p>
                 </div>
 
-                {/* Shop - desktop */}
+                {/* Shop */}
+                <div className="hidden lg:block min-w-0">
+                  <p className="text-gray-700 truncate">
+                    {item.shopName || "—"}
+                  </p>
+                  <p className="text-gray-400 text-xs truncate">
+                    {item.sellerName || ""}
+                  </p>
+                </div>
+
+                {/* Category */}
                 <div className="hidden lg:block">
-                  <p className="text-gray-700 text-sm truncate">{item.shopName || '—'}</p>
-                  <p className="text-gray-400 text-xs truncate">{item.sellerName || ''}</p>
+                  <p className="text-gray-600 truncate">
+                    {item.subCategory}
+                  </p>
                 </div>
 
-                {/* Category - desktop */}
-                <p className="hidden lg:block text-gray-600">{item.category}</p>
-
-                {/* Price - desktop */}
-                <p className="hidden lg:block font-medium text-gray-800">{currency}{item.price}</p>
-
-                {/* Status badge - desktop */}
+                {/* Price */}
                 <div className="hidden lg:block">
-                  {item.restricted ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>Restricted
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Active
-                    </span>
-                  )}
+                  <p className="font-medium text-gray-800">
+                    {currency}{item.price}
+                  </p>
                 </div>
+
+                {/* Status */}
+
 
                 {/* Action */}
-                <div className="justify-self-end lg:justify-self-center">
+                <div className="flex justify-center">
                   <button
                     onClick={() => toggleRestriction(item._id, item.restricted)}
-                    className={`text-xs font-medium px-3 py-1.5 rounded border transition-colors cursor-pointer ${
-                      item.restricted
+                    className={`text-xs font-medium px-3 py-1.5 rounded border transition-colors cursor-pointer ${item.restricted
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                         : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                    }`}
+                      }`}
                   >
                     {item.restricted ? "Unrestrict" : "Restrict"}
                   </button>
                 </div>
+
+
               </div>
             ))
           )}

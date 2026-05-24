@@ -418,7 +418,7 @@ const Add = ({ token }) => {
             {showSizeDropdown && (
               <div
                 ref={sizePanelRef}
-                className="bg-white border border-gray-200 rounded shadow-lg overflow-y-auto overscroll-contain"
+                className="w-30 max-w-[125px] bg-white border border-gray-200 rounded shadow-lg overflow-y-auto overscroll-contain"
                 style={sizeDropdownStyle}
               >
                 {availableSizes.map(sz => {

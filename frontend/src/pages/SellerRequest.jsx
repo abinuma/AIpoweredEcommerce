@@ -95,7 +95,7 @@ const SellerRequest = () => {
       <div className="flex flex-col items-center justify-center py-20 text-center px-4">
         <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-2xl mb-4">✓</div>
         <h2 className="text-2xl font-medium mb-2">You&apos;re a Seller</h2>
-        <p className="text-gray-500 max-w-md">Your seller account is active. Manage products from the seller panel.Try reloadin the page </p>
+        <p className="text-gray-500 max-w-md">Your seller account is active. Manage products from the seller panel. <br /> Reload the page to see changes </p>
         <button onClick={() => navigate("/seller")} className="mt-6 bg-black text-white px-8 py-3 text-sm">Go to Seller Panel</button>
       </div>
     );
