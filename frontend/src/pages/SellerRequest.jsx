@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import Title from "../components/Title";
 
 const SellerRequest = () => {
-  const { backendUrl, token, navigate } = useContext(ShopContext);
+  const { backendUrl, token, navigate, setRole } = useContext(ShopContext);
   const [shopName, setShopName] = useState("");
   const [shopDescription, setShopDescription] = useState("");
   const [businessDetail, setBusinessDetail] = useState("");
@@ -96,7 +96,11 @@ const SellerRequest = () => {
         <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-2xl mb-4">✓</div>
         <h2 className="text-2xl font-medium mb-2">You&apos;re a Seller</h2>
         <p className="text-gray-500 max-w-md">Your seller account is active. Manage products from the seller panel. <br /> Reload the page to see changes </p>
-        <button onClick={() => navigate("/seller")} className="mt-6 bg-black text-white px-8 py-3 text-sm">Go to Seller Panel</button>
+        <button onClick={() => {
+          setRole("seller");
+          localStorage.setItem("role", "seller");
+          navigate("/seller");
+        }} className="mt-6 bg-black text-white px-8 py-3 text-sm">Go to Seller Panel</button>
       </div>
     );
   }

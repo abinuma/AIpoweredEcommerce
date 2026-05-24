@@ -155,8 +155,8 @@ const Product = () => {
       <RelatedProducts
         category={productData.category}
         subCategory={productData.subCategory}
-        audience={productData.specifications?.audience}
-        productId={productData._id}
+        productId={productData._id}        audience={productData.specifications?.Audience}
+
       />
     </div>
   ) : (

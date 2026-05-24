@@ -27,7 +27,7 @@ const Navbar = () => {
 
   return (
     
-    <div className="flex items-center justify-between py-5 px-4 font-medium  ">
+    <div className="relative z-50 flex items-center justify-between py-5 px-4 font-medium  ">
       <i   >
         <img src={assets.mycart} className="w-[max(25%,80px)] cursor-pointer" onClick={() => navigate("/")} />
       </i>

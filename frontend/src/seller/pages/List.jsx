@@ -94,7 +94,7 @@ const List = ({ token }) => {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
       pages.push(1);
-      if (currentPage <= 3) { pages.push(2, 3, "...");  }
+      if (currentPage <= 3) { pages.push(2, 3, "..."); }
       else if (currentPage >= totalPages - 2) { pages.push("...", totalPages - 2, totalPages - 1); }
       else { pages.push("...", currentPage - 1, currentPage, currentPage + 1, "..."); }
       pages.push(totalPages);
@@ -117,10 +117,10 @@ const List = ({ token }) => {
       ) : (
         <div>
           {/* Table header */}
-          <div className="hidden md:grid grid-cols-[1fr_3fr_1fr_1fr_auto_1fr] items-center py-2 px-3 border bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-t">
+          {/* Table header */}
+          <div className="hidden custom:grid grid-cols-[80px_3fr_110px_140px_140px] items-center py-3 px-4 border bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-t">
             <span>Image</span>
             <span>Name</span>
-            <span>Category</span>
             <span>Price</span>
             <span>Status</span>
             <span className="text-center">Action</span>
@@ -137,30 +137,22 @@ const List = ({ token }) => {
               const status = getProductStatus(item);
               return (
                 <React.Fragment key={item._id}>
-                  <div className={`grid grid-cols-[80px_1fr_auto] md:grid-cols-[1fr_3fr_1fr_1fr_auto_1fr] items-center gap-3 py-3 px-3 border-b text-sm ${status === 'restricted' ? 'bg-red-50/40' : 'bg-white'}`}>
-                    {/* Image */}
-                    <div className="w-12">
-                      <img className="w-12 h-12 object-cover rounded" src={item.image?.[0] || "/placeholder.jpg"} alt={item.name} />
+<div className={`grid grid-cols-[80px_1fr_auto] custom:grid-cols-[70px_3fr_80px_140px_140px] items-center gap-3 py-3 px-4 border-b text-sm ${status === 'restricted' ? 'bg-red-50/40' : 'bg-white'}`}>                    <div className="w-12">
+                      <img className="w-20 h-15 object-cover rounded" src={item.image?.[0] || "/placeholder.jpg"} alt={item.name} />
                     </div>
-
                     {/* Name + mobile info */}
                     <div className="flex flex-col gap-1 md:block min-w-0">
                       <p className="font-medium text-gray-800 truncate">{item.name}</p>
-                      <div className="md:hidden text-xs text-gray-500 flex flex-wrap gap-x-3 items-center">
-                        <span>{item.category}</span>
+                      <div className="custom:hidden text-xs text-gray-500 flex flex-wrap gap-x-3 items-center">
                         <span className="font-medium">{currency}{item.price}</span>
                         <StatusBadge status={status} />
                       </div>
                     </div>
-
-                    {/* Category */}
-                    <p className="hidden md:block text-gray-600">{item.category}</p>
-
                     {/* Price */}
-                    <p className="hidden md:block font-medium text-gray-800">{currency}{item.price}</p>
+                    <p className="hidden custom:block font-medium text-gray-800">{currency}{item.price}</p>
 
                     {/* Status badge */}
-                    <div className="hidden md:block">
+                    <div className="hidden custom:block">
                       <StatusBadge status={status} />
                     </div>
 

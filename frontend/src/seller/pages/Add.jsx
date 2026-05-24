@@ -20,6 +20,7 @@ const Add = ({ token }) => {
   const [subCategory, setSubCategory] = useState("Topwear");
   const [keywords, setKeywords] = useState("");
   const [bestseller, setBestseller] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
   // Sizes will store objects: { size: string, stock: number }
   const [sizes, setSizes] = useState([]);
@@ -171,6 +172,7 @@ const Add = ({ token }) => {
     }
 
     try {
+      setIsAdding(true);
       const formData = new FormData();
       formData.append('name', name);
       formData.append('description', description);
@@ -211,6 +213,8 @@ const Add = ({ token }) => {
     } catch (error) {
       console.log(error)
       toast.error(error.response?.data?.message || error.message)
+    } finally {
+      setIsAdding(false);
     }
   }
 
@@ -502,10 +506,11 @@ const Add = ({ token }) => {
         </label>
       </div>
       <button
-        className="w-28 py-3 bg-black text-white cursor-pointer"
+        className="px-8 py-3 bg-black text-white cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
         type="submit"
+        disabled={isAdding}
       >
-        ADD
+        {isAdding ? "Adding..." : "Add Product"}
       </button>
     </form>
   );
