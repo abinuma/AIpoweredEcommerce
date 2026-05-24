@@ -69,6 +69,7 @@ const ShopCard = ({ shop, compact = false }) => {
   );
 
   const renderImages = () => {
+    // Showing from best seller lists when no rated products are available
     if (ratedProducts.length === 0) {
       if (!defaultProduct) {
         return (
@@ -77,9 +78,16 @@ const ShopCard = ({ shop, compact = false }) => {
           </div>
         );
       }
-      return <ProductImage product={defaultProduct} className="w-full h-56 rounded-lg" />;
-    }
+return (
+  <div className="w-full h-56 flex items-center justify-center">
+    <ProductImage
+      product={defaultProduct}
+      className="w-40 h-30 rounded-xl"
+    />
+  </div>
+);    }
 
+    // Layout for 4 or more rated products (2x2 grid)
     if (ratedProducts.length >= 4) {
       return (
         <div className="w-full h-56 grid grid-cols-2 grid-rows-2 gap-1 rounded-lg overflow-hidden">
@@ -91,6 +99,7 @@ const ShopCard = ({ shop, compact = false }) => {
       );
     }
 
+    // Layout for exactly 3 rated products (1 large top, 2 small bottom)
     if (ratedProducts.length === 3) {
       return (
         <div className="w-full h-56 flex flex-col gap-1 rounded-lg overflow-hidden">
@@ -103,23 +112,30 @@ const ShopCard = ({ shop, compact = false }) => {
       );
     }
 
+    // Layout for exactly 2 rated products (side-by-side)
     if (ratedProducts.length === 2) {
       return (
-        <div className="w-full h-56 grid grid-cols-2 gap-1 rounded-lg overflow-hidden">
+        <div className="w-full h-full grid grid-cols-2 gap-1 rounded-lg overflow-hidden">
           <ProductImage product={ratedProducts[0]} className="w-full h-full" />
           <ProductImage product={ratedProducts[1]} className="w-full h-full" />
         </div>
       );
     }
 
-    // length === 1
-    return <ProductImage product={ratedProducts[0]} className="w-full h-56 rounded-lg" />;
-  };
+    // Layout for exactly 1 rated product
+return (
+  <div className="w-full h-56 flex items-center justify-center">
+    <ProductImage
+      product={ratedProducts[0]}
+      className="w-40 h-30 rounded-xl"
+    />
+  </div>
+);  };
 
   return (
     <div
       className={`bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between overflow-hidden ${
-        compact ? "min-w-[280px] p-4 flex-shrink-0" : "p-5 min-h-[380px]"
+        compact ? "min-w-[20px] p-4 flex-shrink-0" : "p-5 min-h-[380px]"
       }`}
     >
       <div>
