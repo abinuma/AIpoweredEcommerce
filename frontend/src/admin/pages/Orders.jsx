@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { backendUrl, currency } from "../App";
 import axios from "axios";
 import { toast } from "react-toastify";
+import Pagination from "../../components/Pagination";
 
 const STATUS_COLORS = {
   "Order Placed": { bg: "bg-slate-100", text: "text-slate-700", dot: "bg-slate-400" },
@@ -361,31 +362,12 @@ const Orders = ({ token }) => {
             )}
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 py-3 border-t border-gray-100">
-                <button onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
-                  className={`w-8 h-8 rounded border flex justify-center items-center text-sm ${currentPage === 1 ? "border-gray-200 text-gray-300 cursor-not-allowed" : "border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer"}`}>
-                  &lt;
-                </button>
-                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                  let page;
-                  if (totalPages <= 5) page = i + 1;
-                  else if (currentPage <= 3) page = i + 1;
-                  else if (currentPage >= totalPages - 2) page = totalPages - 4 + i;
-                  else page = currentPage - 2 + i;
-                  return (
-                    <button key={page} onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1 rounded text-sm font-medium ${currentPage === page ? "bg-gray-800 text-white" : "text-gray-600 hover:bg-gray-100"}`}>
-                      {page}
-                    </button>
-                  );
-                })}
-                <button onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
-                  className={`w-8 h-8 rounded border flex justify-center items-center text-sm ${currentPage === totalPages ? "border-gray-200 text-gray-300 cursor-not-allowed" : "border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer"}`}>
-                  &gt;
-                </button>
-              </div>
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              className="py-3 border-t border-gray-100"
+            />
           </div>
         </>
       )}

@@ -5,6 +5,7 @@ import { Routes, Route, useNavigate } from "react-router-dom";
 import Add from "./pages/Add";
 import List from "./pages/List";
 import Orders from "./pages/Orders";
+import ShopProfile from "./pages/ShopProfile";
 import SellerRequests from "./pages/SellerRequests";
 import { ShopContext } from "../context/ShopContext";
 
@@ -36,6 +37,7 @@ const SellerApp = () => {
             <Route path="add" element={<Add token={token} />} />
             <Route path="list" element={<List token={token} />} />
             <Route path="orders" element={<Orders token={token} />} />
+            <Route path="shop" element={<ShopProfile token={token} />} />
           </Routes>
         </div>
       </div>

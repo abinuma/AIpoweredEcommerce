@@ -90,7 +90,7 @@ const SellerRequests = ({ token }) => {
           <p className="text-gray-400">No seller requests found</p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-4 mb-5">
           {requests.map((req) => (
             <div
               key={req.id}

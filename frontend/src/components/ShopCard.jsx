@@ -4,7 +4,8 @@ import { ShopContext } from "../context/ShopContext";
 
 const ShopCard = ({ shop, compact = false }) => {
   const shopName = shop.shop_name || shop.name || "Shop";
-  const shopDescription = shop.shop_description || "";
+const shopDescription =
+  shop.shop_description || "";
   const navigate = useNavigate();
 
   const { products, backendUrl } = useContext(ShopContext);

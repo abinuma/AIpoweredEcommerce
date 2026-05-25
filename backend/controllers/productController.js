@@ -27,6 +27,41 @@ const parseSizesInput = (sizes) => {
   return [];
 };
 
+const PRODUCT_SELECT = `
+  p.id AS "_id",
+  p.name,
+  p.seller_id,
+  p.description,
+  p.price,
+  p.image,
+  p.category,
+  p.sub_category AS "subCategory",
+  p.sizes,
+  p.bestseller,
+  p.date,
+  p.specifications,
+  p.stock_quantity AS "stockQuantity",
+  COALESCE(rv.average_rating, 0) AS average_rating,
+  COALESCE(rv.review_count, 0) AS review_count
+`;
+
+const PRODUCT_FROM = `
+  FROM products p
+  LEFT JOIN (
+    SELECT product_id,
+           ROUND(AVG(rating)::numeric, 1) AS average_rating,
+           COUNT(*)::int AS review_count
+    FROM reviews
+    GROUP BY product_id
+  ) rv ON rv.product_id = p.id
+`;
+
+const parseListParam = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  return String(value).split(",").map((s) => s.trim()).filter(Boolean);
+};
+
 const normalizeSizeEntries = (sizes) => {
   if (!Array.isArray(sizes)) return [];
   return sizes
@@ -235,43 +270,18 @@ const listProducts = async (req, res) => {
     let productRows;
     if (!seller_id) {
       const result = await pool.query(
-        `SELECT
-          id AS "_id",
-          name,
-          seller_id,
-          description,
-          price,
-          image,
-          category,
-          sub_category AS "subCategory",
-          sizes,
-          bestseller,
-          date,
-          specifications,
-          stock_quantity AS "stockQuantity"
-        FROM products
-        WHERE restricted = false
-        ORDER BY date DESC`,
+        `SELECT ${PRODUCT_SELECT}
+         ${PRODUCT_FROM}
+         WHERE p.restricted = false
+         ORDER BY p.date DESC`,
       );
       productRows = result.rows;
     } else {
       const result = await pool.query(
-        `SELECT
-          id AS "_id",
-          name,
-          seller_id,
-          description,
-          price,
-          image,
-          category,
-          sub_category AS "subCategory",
-          sizes,
-          bestseller,
-          date,
-          specifications,
-          stock_quantity AS "stockQuantity"
-        FROM products WHERE seller_id = $1
-        ORDER BY date DESC`,
+        `SELECT ${PRODUCT_SELECT}
+         ${PRODUCT_FROM}
+         WHERE p.seller_id = $1
+         ORDER BY p.date DESC`,
         [seller_id]
       );
       productRows = result.rows;
@@ -418,4 +428,140 @@ const unrestrictProduct = async (req, res) => {
   }
 };
 
-export { listProducts, addProduct, removeProduct, singleProduct, adminListProducts, restrictProduct, unrestrictProduct };
+// Filter products for collection page (customer-facing)
+const filterProducts = async (req, res) => {
+  try {
+    const {
+      category,
+      subCategory,
+      audience,
+      brand,
+      ram,
+      storage,
+      skinType,
+      sizes,
+      priceMin,
+      priceMax,
+      sort,
+    } = req.query;
+
+    const conditions = ["p.restricted = false"];
+    const params = [];
+
+    const categories = parseListParam(category);
+    if (categories.length > 0) {
+      params.push(categories);
+      conditions.push(`p.category = ANY($${params.length}::text[])`);
+    }
+
+    const subCategories = parseListParam(subCategory);
+    if (subCategories.length > 0) {
+      params.push(subCategories);
+      conditions.push(`p.sub_category = ANY($${params.length}::text[])`);
+    }
+
+    const audiences = parseListParam(audience);
+    if (audiences.length > 0) {
+      params.push(audiences);
+      conditions.push(`p.specifications->>'Audience' = ANY($${params.length}::text[])`);
+    }
+
+    const brands = parseListParam(brand);
+    if (brands.length > 0) {
+      params.push(brands.map((b) => b.toLowerCase()));
+      conditions.push(`LOWER(p.specifications->>'brand') = ANY($${params.length}::text[])`);
+    }
+
+    const rams = parseListParam(ram);
+    if (rams.length > 0) {
+      params.push(rams);
+      conditions.push(`p.specifications->>'ram' = ANY($${params.length}::text[])`);
+    }
+
+    const storages = parseListParam(storage);
+    if (storages.length > 0) {
+      params.push(storages);
+      conditions.push(`p.specifications->>'storage' = ANY($${params.length}::text[])`);
+    }
+
+    const skinTypes = parseListParam(skinType);
+    if (skinTypes.length > 0) {
+      params.push(skinTypes);
+      conditions.push(`p.specifications->>'skinType' = ANY($${params.length}::text[])`);
+    }
+
+    const sizeList = parseListParam(sizes);
+    if (sizeList.length > 0) {
+      params.push(sizeList);
+      conditions.push(`
+        EXISTS (
+          SELECT 1 FROM jsonb_array_elements(p.sizes) AS elem
+          WHERE COALESCE(elem->>'size', trim(both '"' from elem::text)) = ANY($${params.length}::text[])
+        )
+      `);
+    }
+
+    if (priceMin !== undefined && priceMin !== "") {
+      params.push(Number(priceMin));
+      conditions.push(`p.price >= $${params.length}`);
+    }
+    if (priceMax !== undefined && priceMax !== "") {
+      params.push(Number(priceMax));
+      conditions.push(`p.price <= $${params.length}`);
+    }
+
+    let orderBy = "p.date DESC";
+    if (sort === "low-high") orderBy = "p.price ASC";
+    if (sort === "high-low") orderBy = "p.price DESC";
+    if (sort === "rating") orderBy = "rv.average_rating DESC NULLS LAST, p.date DESC";
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const { rows } = await pool.query(
+      `SELECT ${PRODUCT_SELECT}
+       ${PRODUCT_FROM}
+       ${whereClause}
+       ORDER BY ${orderBy}`,
+      params,
+    );
+
+    res.json({ success: true, products: rows });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getPriceBounds = async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+         COALESCE(MIN(price), 0) AS min_price,
+         COALESCE(MAX(price), 100) AS max_price
+       FROM products
+       WHERE restricted = false`,
+    );
+    const min = Math.floor(Number(rows[0]?.min_price) || 0);
+    const max = Math.ceil(Number(rows[0]?.max_price) || 100);
+    res.json({
+      success: true,
+      minPrice: min,
+      maxPrice: max > min ? max : min + 100,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export {
+  listProducts,
+  addProduct,
+  removeProduct,
+  singleProduct,
+  adminListProducts,
+  restrictProduct,
+  unrestrictProduct,
+  filterProducts,
+  getPriceBounds,
+};

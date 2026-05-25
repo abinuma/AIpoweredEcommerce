@@ -345,8 +345,7 @@ const Add = ({ token }) => {
         )}
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2 w-full sm:gap-8">
-        <div>
+<div className="flex flex-col sm:flex-row sm:flex-wrap items-start gap-2 w-full sm:gap-8">        <div>
           <p className="mb-2">Product category</p>
           <select
             onChange={handleCategoryChange}
@@ -375,7 +374,7 @@ const Add = ({ token }) => {
           <input
             onChange={(e) => setPrice(e.target.value)}
             value={price}
-            className="w-full px-3 py-2 sm:w-30 border border-gray-300 rounded"
+            className="w-full px-3 py-1 sm:w-24 border border-gray-300 rounded"
             type="number"
             placeholder="25"
           />
@@ -387,7 +386,7 @@ const Add = ({ token }) => {
             <input
               onChange={(e) => setStockQuantity(e.target.value)}
               value={stockQuantity}
-              className="w-full px-3 py-2 sm:w-30 border border-gray-300 rounded"
+              className="w-full px-3 py-1 sm:w-24 border border-gray-300 rounded"
               type="number"
               placeholder="100"
             />
@@ -400,7 +399,7 @@ const Add = ({ token }) => {
           <p className="mb-2">Product sizes</p>
           <div className="relative" ref={dropdownRef}>
             <div
-              className="w-30 max-w-[125px] px-3 py-2 border border-gray-300 rounded cursor-pointer bg-white flex justify-between items-center"
+              className="w-40 max-w-[140px] px-3 py-2 border border-gray-300 rounded cursor-pointer bg-white flex justify-between items-center"
               onClick={() => setShowSizeDropdown(!showSizeDropdown)}
             >
               {/* <span className="text-gray-700">Select Sizes ▼</span> */}

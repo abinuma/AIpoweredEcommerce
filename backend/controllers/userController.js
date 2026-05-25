@@ -166,7 +166,7 @@ const getProfile = async (req, res) => {
     if (!userId) {
       return res.json({ success: false, message: "Not authenticated" });
     }
-    const { rows } = await pool.query("SELECT id, name, email, role FROM users WHERE id = $1", [userId]);
+    const { rows } = await pool.query("SELECT id, name, email, role, shop_name, shop_description FROM users WHERE id = $1", [userId]);
     if (rows.length > 0) {
       return res.json({ success: true, user: rows[0] });
     } else {
@@ -178,6 +178,47 @@ const getProfile = async (req, res) => {
   }
 };
 
-export { loginUser, registerUser, adminLogin, getProfile };
+const updateShopProfile = async (req, res) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Not authenticated" });
+    }
+    const { shop_name, shop_description } = req.body;
+
+    const { rows: userRows } = await pool.query(
+      "SELECT role FROM users WHERE id = $1",
+      [userId],
+    );
+    if (userRows.length === 0 || userRows[0].role !== "seller") {
+      return res.status(403).json({ success: false, message: "Only sellers can update shop profile" });
+    }
+
+    if (!shop_name?.trim()) {
+      return res.status(400).json({ success: false, message: "Shop name is required" });
+    }
+    if (!shop_description?.trim()) {
+      return res.status(400).json({ success: false, message: "Shop description is required" });
+    }
+    if (shop_description.trim().length > 30) {
+      return res.status(400).json({
+        success: false,
+        message: "Shop description must be 30 characters or less",
+      });
+    }
+
+    await pool.query(
+      "UPDATE users SET shop_name = $1, shop_description = $2 WHERE id = $3",
+      [shop_name.trim(), shop_description.trim(), userId],
+    );
+
+    res.json({ success: true, message: "Shop profile updated successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export { loginUser, registerUser, adminLogin, getProfile, updateShopProfile };
 
 

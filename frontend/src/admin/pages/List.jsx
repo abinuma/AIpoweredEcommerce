@@ -2,6 +2,7 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { backendUrl, currency } from "../App";
 import { toast } from "react-toastify";
+import Pagination from "../../components/Pagination";
 
 const List = ({ token }) => {
   const [list, setList] = useState([]);
@@ -57,20 +58,6 @@ const List = ({ token }) => {
   const currentItems = list.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(list.length / itemsPerPage);
   const paginate = (n) => setCurrentPage(n);
-
-  const renderPageNumbers = () => {
-    const pages = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (currentPage <= 3) { pages.push(2, 3, "..."); }
-      else if (currentPage >= totalPages - 2) { pages.push("...", totalPages - 2, totalPages - 1); }
-      else { pages.push("...", currentPage - 1, currentPage, currentPage + 1, "..."); }
-      pages.push(totalPages);
-    }
-    return pages;
-  };
 
   return (
     <div>
@@ -184,28 +171,12 @@ const List = ({ token }) => {
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 py-4 border-t border-gray-100">
-              <button onClick={() => currentPage > 1 && paginate(currentPage - 1)}
-                className={`w-8 h-8 rounded border flex justify-center items-center text-sm ${currentPage === 1 ? "border-gray-200 text-gray-300 cursor-not-allowed" : "border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer"}`}>
-                &lt;
-              </button>
-              {renderPageNumbers().map((num, idx) =>
-                num === "..." ? (
-                  <span key={idx} className="text-gray-400 px-1">…</span>
-                ) : (
-                  <button key={idx} onClick={() => paginate(num)}
-                    className={`px-3 py-1 rounded text-sm font-medium ${currentPage === num ? "bg-gray-800 text-white" : "text-gray-600 hover:bg-gray-100"}`}>
-                    {num}
-                  </button>
-                )
-              )}
-              <button onClick={() => currentPage < totalPages && paginate(currentPage + 1)}
-                className={`w-8 h-8 rounded border flex justify-center items-center text-sm ${currentPage === totalPages ? "border-gray-200 text-gray-300 cursor-not-allowed" : "border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer"}`}>
-                &gt;
-              </button>
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={paginate}
+            className="py-4 border-t border-gray-100"
+          />
         </div>
       )}
     </div>

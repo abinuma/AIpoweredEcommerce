@@ -7,6 +7,8 @@ import {
   adminListProducts,
   restrictProduct,
   unrestrictProduct,
+  filterProducts,
+  getPriceBounds,
 } from "../controllers/productController.js";
 import upload from "../middleware/multer.js";
 import adminAuth from "../middleware/adminAuth.js";
@@ -36,6 +38,8 @@ productRouter.post("/add", handleUpload, sellerAuth, addProduct);
 productRouter.delete("/:id", sellerAuth, removeProduct);
 productRouter.post("/single", singleProduct);
 productRouter.get("/list", listProducts);
+productRouter.get("/filter", filterProducts);
+productRouter.get("/price-bounds", getPriceBounds);
 productRouter.get("/admin-list", sellerAuth, adminListProducts);
 productRouter.patch("/:id/restrict", adminAuth, restrictProduct);
 productRouter.patch("/:id/unrestrict", adminAuth, unrestrictProduct);
