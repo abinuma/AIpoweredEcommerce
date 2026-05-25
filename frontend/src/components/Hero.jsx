@@ -77,64 +77,81 @@ const Hero = () => {
   const [left, right] = current.products;
 
   return (
-    <div className="px-24 gap-6 relative w-full h-[500px] overflow-hidden bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center">
-      {/* LEFT IMAGE */}
-      {left && (
-        <div
-          onClick={() => navigate(`/product/${left._id}`)}
-          className="w-[22%] h-[240px] bg-white rounded-xl shadow-md overflow-hidden flex items-center justify-center self-start mt-8 cursor-pointer hover:shadow-xl transition"
-        >
-          <img
-            src={left.image?.[0]}
-            alt={left.name}
-            className="w-full h-full object-contain p-4 hover:scale-105 transition"
-          />
+    <>
+      {/* Hide hero below tablet screens */}
+      <div className="hidden md:flex px-6 lg:px-24 gap-4 lg:gap-6 relative w-full h-[420px] lg:h-[500px] overflow-hidden bg-gray-50 border border-gray-200 rounded-xl items-center justify-center">
+  
+        {/* LEFT IMAGE */}
+        {left && (
+          <div
+            onClick={() => navigate(`/product/${left._id}`)}
+            className="
+              w-[24%] lg:w-[22%]
+              h-[190px] lg:h-[240px]
+              bg-white rounded-xl shadow-md overflow-hidden
+              flex items-center justify-center
+              self-start mt-6 lg:mt-8
+              cursor-pointer hover:shadow-xl transition
+              shrink-0
+            "
+          >
+            <img
+              src={left.image?.[0]}
+              alt={left.name}
+              className="w-full h-full object-contain p-3 lg:p-4 hover:scale-105 transition"
+            />
+          </div>
+        )}
+  
+        {/* CENTER TEXT */}
+        <div className="px-4 lg:px-10 text-center shrink-0">
+          <p className="text-[10px] lg:text-xs tracking-widest text-gray-500 uppercase">
+            Trending products in
+          </p>
+  
+          <h1 className="text-2xl lg:text-4xl font-bold text-gray-900 mt-2 whitespace-nowrap">
+            {current.category}
+          </h1>
         </div>
-      )}
-
-      {/* CENTER TEXT */}
-      <div className="px-10 text-center">
-        <p className="text-xs tracking-widest text-gray-500 uppercase">
-          Trending products in
-        </p>
-
-        <h1 className="text-4xl font-bold text-gray-900 mt-2">
-          {current.category}
-        </h1>
-
-
-      </div>
-
-      {/* RIGHT IMAGE */}
-      {right && (
-        <div
-          onClick={() => navigate(`/product/${right._id}`)}
-          className="w-[38%] h-[420px] bg-white rounded-xl shadow-lg overflow-hidden flex items-center justify-center cursor-pointer hover:shadow-2xl transition"
-        >
-          <img
-            src={right.image?.[0]}
-            alt={right.name}
-            className="w-full h-full object-contain p-6 hover:scale-105 transition"
-          />
-        </div>
-      )}
-
-      {/* NAV BUTTONS */}
-       <button
+  
+        {/* RIGHT IMAGE */}
+        {right && (
+          <div
+            onClick={() => navigate(`/product/${right._id}`)}
+            className="
+              w-[40%] lg:w-[38%]
+              h-[320px] lg:h-[420px]
+              bg-white rounded-xl shadow-lg overflow-hidden
+              flex items-center justify-center
+              cursor-pointer hover:shadow-2xl transition
+              shrink-0
+            "
+          >
+            <img
+              src={right.image?.[0]}
+              alt={right.name}
+              className="w-full h-full object-contain p-4 lg:p-6 hover:scale-105 transition"
+            />
+          </div>
+        )}
+  
+        {/* LEFT NAV */}
+        <button
           onClick={prev}
-          className="absolute left-5 z-20 w-14 h-14 rounded-full bg-white shadow-lg flex items-center justify-center hover:scale-105 transition"
+          className="absolute left-3 lg:left-5 z-20 w-10 h-10 lg:w-14 lg:h-14 rounded-full bg-white shadow-lg flex items-center justify-center hover:scale-105 transition"
         >
-          <ChevronLeft size={28} />
+          <ChevronLeft size={24} className="lg:w-7 lg:h-7" />
         </button>
-
+  
         {/* RIGHT NAV */}
         <button
           onClick={next}
-          className="absolute right-5 z-20 w-14 h-14 rounded-full bg-white shadow-lg flex items-center justify-center hover:scale-105 transition"
+          className="absolute right-3 lg:right-5 z-20 w-10 h-10 lg:w-14 lg:h-14 rounded-full bg-white shadow-lg flex items-center justify-center hover:scale-105 transition"
         >
-          <ChevronRight size={28} />
+          <ChevronRight size={24} className="lg:w-7 lg:h-7" />
         </button>
-    </div>
+      </div>
+    </>
   );
 };
 

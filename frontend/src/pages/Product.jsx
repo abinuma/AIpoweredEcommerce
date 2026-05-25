@@ -108,7 +108,7 @@ const Product = () => {
           )}
           <button
             onClick={() => addToCart(productData._id, sizeOptions.length > 0 ? size : "One Size")}
-            className="bg-black text-white px-8 py-3 text-sm active:bg-gray-700"
+            className="bg-black text-white px-8 py-3 my-2 text-sm active:bg-gray-700"
           >
             ADD TO CART
           </button>

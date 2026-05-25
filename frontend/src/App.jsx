@@ -27,7 +27,7 @@ const App = () => {
   const isPanelPath = location.pathname.startsWith('/admin') || location.pathname.startsWith('/seller');
 
   return (
-    <div className={isPanelPath ? '' : 'px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'}>
+    <div className={isPanelPath ? '' : 'w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8'}>
       <ToastContainer />
       {!isPanelPath && <Navbar />}
       {!isPanelPath && <SearchBar />}

@@ -169,7 +169,7 @@ return (
             e.preventDefault();
             navigate(`/shops/${shop.id}`);
           }}
-          className="bg-black text-white text-sm font-medium px-5 py-2.5 rounded hover:bg-gray-800 transition-colors whitespace-nowrap shadow-sm"
+          className="bg-[#ece8ec] text-[#100f0f] text-sm font-medium px-5 py-2.5 rounded hover:bg-[#d9d5d9] transition-colors whitespace-nowrap shadow-sm"
         >
           Visit Us
         </button>

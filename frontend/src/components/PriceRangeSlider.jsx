@@ -24,7 +24,7 @@ const PriceRangeSlider = ({ min, max, value, onChange, currency = "$" }) => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pr-1">
       <style>{`
         .${id}-range {
           position: absolute;
@@ -93,8 +93,8 @@ const PriceRangeSlider = ({ min, max, value, onChange, currency = "$" }) => {
         <div
           className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-gray-800 transition-[left,width] duration-75"
           style={{
-            left: `${minPercent}%`,
-            width: `${Math.max(0, maxPercent - minPercent)}%`,
+            left: `calc(${minPercent}% + 2px)`,
+            width: `calc(${Math.max(0, maxPercent - minPercent)}% - 2px)`,
           }}
         />
         <input
