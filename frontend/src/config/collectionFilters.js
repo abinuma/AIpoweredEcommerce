@@ -2,7 +2,10 @@ import { specificationsConfig } from "./specifications";
 
 export const PRODUCT_CATEGORIES = ["Clothing", "Shoes", "Electronics", "Beauty"];
 
-export const SHOE_FILTER_SIZES = ["30", "31", "32", "33", "34", "35", "36"];
+export const SHOE_FILTER_SIZES = [
+  "30", "31", "32", "33", "34", "35", "36",
+  "37", "38", "39", "40", "41", "42", "43", "44", "45", "46",
+];
 
 export const getCategoryFilterMeta = (category) => {
   const config = specificationsConfig[category];

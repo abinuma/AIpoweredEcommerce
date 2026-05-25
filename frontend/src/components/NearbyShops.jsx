@@ -33,9 +33,8 @@ const NearbyShops = () => {
         const shopRes = await axios.get(
           `${backendUrl}/api/location/nearby-shops?lat=${coords.lat}&lng=${coords.lng}&radius=50`,
         );
-        if (shopRes.data.success){
-           setShops(shopRes.data.shops);
-           console.log(shopRes.data.shops)
+        if (shopRes.data.success) {
+          setShops(shopRes.data.shops);
         }
       } catch {
         setError("failed");
@@ -53,6 +52,7 @@ const NearbyShops = () => {
           Enable location to discover shops near you
         </p>
         <button
+          type="button"
           onClick={() => window.location.reload()}
           className="mt-2 text-sm text-black underline"
         >
@@ -64,6 +64,10 @@ const NearbyShops = () => {
 
   if (error || (!loading && shops.length === 0)) return null;
 
+  const nearestThree = [...shops]
+    .sort((a, b) => (a.distance_km ?? a.distance ?? 0) - (b.distance_km ?? b.distance ?? 0))
+    .slice(0, 3);
+
   return (
     <div className="my-10">
       <div className="text-center py-6 text-3xl">
@@ -71,22 +75,17 @@ const NearbyShops = () => {
       </div>
 
       {loading ? (
-        <div className="flex gap-4 overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="min-w-[200px] h-24 bg-gray-100 rounded-lg animate-pulse" />
+            <div key={i} className="min-h-[380px] bg-gray-100 rounded-xl animate-pulse" />
           ))}
         </div>
       ) : (
-        shops.length > 0 && (
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-            {shops
-  .sort((a, b) => a.distance - b.distance)
-  .slice(0, 3)
-  .map((shop) =>  (
-              <ShopCard key={shop.id} shop={shop} compact />
-            ))}
-          </div>
-        )
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10">
+          {nearestThree.map((shop) => (
+            <ShopCard key={shop.id} shop={shop} />
+          ))}
+        </div>
       )}
     </div>
   );

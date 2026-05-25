@@ -1,74 +1,42 @@
-import { useContext, useEffect, useMemo, useState, useCallback } from "react";
+import { useContext, useEffect, useState, useCallback } from "react";
 import { ShopContext } from "../context/ShopContext";
 import { SlidersHorizontal, X } from "lucide-react";
 import Title from "../components/Title";
 import ProductItem from "../components/ProductItem";
 import PriceRangeSlider from "../components/PriceRangeSlider";
 import Pagination from "../components/Pagination";
+import CollapsibleSection from "../components/collection/CollapsibleSection";
+import CategoryFilterPanel from "../components/collection/CategoryFilterPanel";
 import axios from "axios";
 import {
   PRODUCT_CATEGORIES,
   rotateProductsByCategory,
 } from "../utils/productDistribution";
 import {
-  getCategoryFilterMeta,
-  extractFilterOptions,
-} from "../config/collectionFilters";
+  initialCategoryFilters,
+  productMatchesCategoryFilters,
+  flattenCategoryFilters,
+  countActiveCategoryFilters,
+} from "../utils/collectionFilterUtils";
 
 const ITEMS_PER_PAGE = 12;
-
-const emptyFilters = () => ({
-  categories: [],
-  subCategory: [],
-  audience: [],
-  sizes: [],
-  brand: [],
-  ram: [],
-  storage: [],
-  skinType: [],
-});
 
 const Collection = () => {
   const { products, search, showSearch, backendUrl, currency } = useContext(ShopContext);
   const [showFilter, setShowFilter] = useState(false);
   const [filterProducts, setFilterProducts] = useState([]);
-  const [filters, setFilters] = useState(emptyFilters);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [categoryFilters, setCategoryFilters] = useState(initialCategoryFilters);
   const [priceRange, setPriceRange] = useState({ min: 0, max: 500 });
   const [priceBounds, setPriceBounds] = useState({ min: 0, max: 500 });
   const [sortType, setSortType] = useState("relevant");
   const [searchMeta, setSearchMeta] = useState(null);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [debouncedPrice, setDebouncedPrice] = useState({ min: 0, max: 500 });
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedPrice(priceRange), 350);
-    return () => clearTimeout(timer);
-  }, [priceRange]);
-
-  const activeCategory =
-    filters.categories.length === 1 ? filters.categories[0] : null;
-  const categoryMeta = activeCategory ? getCategoryFilterMeta(activeCategory) : null;
-
-  const brandOptions = useMemo(
-    () => (activeCategory ? extractFilterOptions(products, activeCategory, "brand") : []),
-    [products, activeCategory],
-  );
-  const ramOptions = useMemo(
-    () => (activeCategory === "Electronics" ? extractFilterOptions(products, "Electronics", "ram") : []),
-    [products, activeCategory],
-  );
-  const storageOptions = useMemo(
-    () =>
-      activeCategory === "Electronics"
-        ? extractFilterOptions(products, "Electronics", "storage")
-        : [],
-    [products, activeCategory],
-  );
-  const skinTypeOptions = useMemo(
-    () => (activeCategory === "Beauty" ? extractFilterOptions(products, "Beauty", "skinType") : []),
-    [products, activeCategory],
-  );
+  const [expanded, setExpanded] = useState({
+    price: true,
+    ...Object.fromEntries(PRODUCT_CATEGORIES.map((c) => [c, false])),
+  });
 
   useEffect(() => {
     const fetchBounds = async () => {
@@ -85,75 +53,51 @@ const Collection = () => {
     fetchBounds();
   }, [backendUrl]);
 
-  const toggleFilter = (key, value) => {
-    setFilters((prev) => {
-      const list = prev[key];
-      const next = list.includes(value)
-        ? list.filter((v) => v !== value)
-        : [...list, value];
-      return { ...prev, [key]: next };
+  const toggleCategory = (cat) => {
+    setSelectedCategories((prev) => {
+      const next = prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat];
+      if (!prev.includes(cat)) {
+        setExpanded((e) => ({ ...e, [cat]: true }));
+      }
+      return next;
     });
     setCurrentPage(1);
   };
 
-  const toggleCategory = (cat) => {
-    setFilters((prev) => {
-      const nextCats = prev.categories.includes(cat)
-        ? prev.categories.filter((c) => c !== cat)
-        : [...prev.categories, cat];
+  const toggleCategoryFilter = (cat, key, value) => {
+    setCategoryFilters((prev) => {
+      const list = prev[cat][key] || [];
+      const next = list.includes(value)
+        ? list.filter((v) => v !== value)
+        : [...list, value];
       return {
-        ...emptyFilters(),
-        categories: nextCats,
-        subCategory: [],
-        audience: [],
-        sizes: [],
-        brand: [],
-        ram: [],
-        storage: [],
-        skinType: [],
+        ...prev,
+        [cat]: { ...prev[cat], [key]: next },
       };
     });
     setCurrentPage(1);
   };
 
   const clearAllFilters = () => {
-    setFilters(emptyFilters());
+    setSelectedCategories([]);
+    setCategoryFilters(initialCategoryFilters());
     setPriceRange({ min: priceBounds.min, max: priceBounds.max });
     setSortType("relevant");
     setCurrentPage(1);
   };
 
-  const hasActiveFilters =
-    filters.categories.length > 0 ||
-    filters.subCategory.length > 0 ||
-    filters.audience.length > 0 ||
-    filters.sizes.length > 0 ||
-    filters.brand.length > 0 ||
-    filters.ram.length > 0 ||
-    filters.storage.length > 0 ||
-    filters.skinType.length > 0 ||
-    debouncedPrice.min > priceBounds.min ||
-    debouncedPrice.max < priceBounds.max;
+  const specFilterActive = countActiveCategoryFilters(selectedCategories, categoryFilters) > 0;
 
-  const buildFilterQuery = useCallback(() => {
-    const params = new URLSearchParams();
-    if (filters.categories.length) params.set("category", filters.categories.join(","));
-    if (filters.subCategory.length) params.set("subCategory", filters.subCategory.join(","));
-    if (filters.audience.length) params.set("audience", filters.audience.join(","));
-    if (filters.sizes.length) params.set("sizes", filters.sizes.join(","));
-    if (filters.brand.length) params.set("brand", filters.brand.join(","));
-    if (filters.ram.length) params.set("ram", filters.ram.join(","));
-    if (filters.storage.length) params.set("storage", filters.storage.join(","));
-    if (filters.skinType.length) params.set("skinType", filters.skinType.join(","));
-    if (debouncedPrice.min > priceBounds.min) params.set("priceMin", String(debouncedPrice.min));
-    if (debouncedPrice.max < priceBounds.max) params.set("priceMax", String(debouncedPrice.max));
-    if (sortType === "low-high" || sortType === "high-low") params.set("sort", sortType);
-    return params.toString();
-  }, [filters, debouncedPrice, priceBounds, sortType]);
+  const hasActiveFilters =
+    selectedCategories.length > 0 ||
+    specFilterActive ||
+    priceRange.min > priceBounds.min ||
+    priceRange.max < priceBounds.max;
 
   const applyFilter = useCallback(async () => {
     setLoading(true);
     let productsCopy = [];
+    const usePerCategoryMatch = selectedCategories.length > 1;
 
     if (showSearch && search) {
       try {
@@ -178,54 +122,28 @@ const Collection = () => {
         );
         setSearchMeta({ method: "local", interpretedQuery: null });
       }
-
-      if (filters.categories.length > 0) {
-        productsCopy = productsCopy.filter((p) => filters.categories.includes(p.category));
-      }
-      if (filters.subCategory.length > 0) {
-        productsCopy = productsCopy.filter((p) => filters.subCategory.includes(p.subCategory));
-      }
-      if (filters.audience.length > 0) {
-        productsCopy = productsCopy.filter((p) =>
-          filters.audience.includes(p.specifications?.Audience),
-        );
-      }
-      if (filters.brand.length > 0) {
-        productsCopy = productsCopy.filter((p) =>
-          filters.brand.includes(p.specifications?.brand),
-        );
-      }
-      if (filters.ram.length > 0) {
-        productsCopy = productsCopy.filter((p) =>
-          filters.ram.includes(p.specifications?.ram),
-        );
-      }
-      if (filters.storage.length > 0) {
-        productsCopy = productsCopy.filter((p) =>
-          filters.storage.includes(p.specifications?.storage),
-        );
-      }
-      if (filters.skinType.length > 0) {
-        productsCopy = productsCopy.filter((p) =>
-          filters.skinType.includes(p.specifications?.skinType),
-        );
-      }
-      if (filters.sizes.length > 0) {
-        productsCopy = productsCopy.filter((p) => {
-          const sizes = Array.isArray(p.sizes) ? p.sizes : [];
-          return sizes.some((s) => {
-            const label = typeof s === "string" ? s : s?.size;
-            return filters.sizes.includes(label);
-          });
-        });
-      }
-      productsCopy = productsCopy.filter(
-        (p) => p.price >= debouncedPrice.min && p.price <= debouncedPrice.max,
-      );
     } else {
       setSearchMeta(null);
       try {
-        const qs = buildFilterQuery();
+        const params = new URLSearchParams();
+        if (selectedCategories.length) {
+          params.set("category", selectedCategories.join(","));
+        }
+        if (priceRange.min > priceBounds.min) params.set("priceMin", String(priceRange.min));
+        if (priceRange.max < priceBounds.max) params.set("priceMax", String(priceRange.max));
+        if (!usePerCategoryMatch) {
+          const flat = flattenCategoryFilters(selectedCategories, categoryFilters);
+          if (flat.subCategory.length) params.set("subCategory", [...new Set(flat.subCategory)].join(","));
+          if (flat.audience.length) params.set("audience", [...new Set(flat.audience)].join(","));
+          if (flat.sizes.length) params.set("sizes", [...new Set(flat.sizes)].join(","));
+          if (flat.brand.length) params.set("brand", [...new Set(flat.brand)].join(","));
+          if (flat.ram.length) params.set("ram", [...new Set(flat.ram)].join(","));
+          if (flat.storage.length) params.set("storage", [...new Set(flat.storage)].join(","));
+          if (flat.skinType.length) params.set("skinType", [...new Set(flat.skinType)].join(","));
+        }
+        if (sortType === "low-high" || sortType === "high-low") params.set("sort", sortType);
+
+        const qs = params.toString();
         const url = qs
           ? `${backendUrl}/api/product/filter?${qs}`
           : `${backendUrl}/api/product/list`;
@@ -237,6 +155,16 @@ const Collection = () => {
         console.log(error);
         productsCopy = products.slice();
       }
+    }
+
+    productsCopy = productsCopy.filter(
+      (p) => p.price >= priceRange.min && p.price <= priceRange.max,
+    );
+
+    if (selectedCategories.length > 0 || specFilterActive) {
+      productsCopy = productsCopy.filter((p) =>
+        productMatchesCategoryFilters(p, selectedCategories, categoryFilters),
+      );
     }
 
     if (sortType === "relevant" && !(showSearch && search)) {
@@ -254,10 +182,12 @@ const Collection = () => {
     search,
     showSearch,
     backendUrl,
-    filters,
-    debouncedPrice,
+    selectedCategories,
+    categoryFilters,
+    priceRange,
+    priceBounds,
     sortType,
-    buildFilterQuery,
+    specFilterActive,
   ]);
 
   useEffect(() => {
@@ -274,188 +204,74 @@ const Collection = () => {
     if (currentPage > totalPages) setCurrentPage(1);
   }, [totalPages, currentPage]);
 
-  const FilterGroup = ({ title, children }) => (
-    <div className="border-b border-gray-100 pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{title}</p>
-      <div className="flex flex-col gap-2">{children}</div>
-    </div>
-  );
-
-  const Checkbox = ({ label, value, checked, onChange }) => (
-    <label className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer group">
-      <input
-        type="checkbox"
-        className="w-4 h-4 rounded border-gray-300 text-gray-800 focus:ring-gray-400"
-        checked={checked}
-        onChange={() => onChange(value)}
-      />
-      <span className="group-hover:text-gray-900">{label}</span>
-    </label>
-  );
-
   return (
     <div className="flex flex-col lg:flex-row gap-6 pt-10 border-t px-4 sm:px-6">
-      {/* Filters sidebar */}
-      <aside className="w-full lg:w-[280px] shrink-0">
+      <aside className="w-full lg:w-[300px] shrink-0">
         <button
           type="button"
           onClick={() => setShowFilter(!showFilter)}
-          className="lg:hidden w-full flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white"
+          className="lg:hidden w-full flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white shadow-sm"
         >
           <SlidersHorizontal size={18} />
           {showFilter ? "Hide Filters" : "Show Filters"}
         </button>
 
         <div
-          className={`mt-4 lg:mt-0 bg-white border border-gray-200 rounded-lg p-5 ${
+          className={`mt-4 lg:mt-0 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden ${
             showFilter ? "block" : "hidden lg:block"
           }`}
         >
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/80">
             <h3 className="text-sm font-semibold text-gray-800">Filters</h3>
             {hasActiveFilters && (
               <button
                 type="button"
                 onClick={clearAllFilters}
-                className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1"
+                className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1 transition-colors"
               >
                 <X size={14} /> Clear all
               </button>
             )}
           </div>
 
-          <FilterGroup title="Category">
+          <div className="px-5 max-h-[calc(100vh-8rem)] overflow-y-auto">
+            <CollapsibleSection
+              title="Price"
+              open={expanded.price}
+              onToggle={() => setExpanded((e) => ({ ...e, price: !e.price }))}
+              badge={
+                priceRange.min > priceBounds.min || priceRange.max < priceBounds.max ? 1 : 0
+              }
+            >
+              <PriceRangeSlider
+                min={priceBounds.min}
+                max={priceBounds.max}
+                value={priceRange}
+                onChange={(v) => {
+                  setPriceRange(v);
+                  setCurrentPage(1);
+                }}
+                currency={currency}
+              />
+            </CollapsibleSection>
+
             {PRODUCT_CATEGORIES.map((cat) => (
-              <Checkbox
+              <CategoryFilterPanel
                 key={cat}
-                label={cat}
-                value={cat}
-                checked={filters.categories.includes(cat)}
-                onChange={toggleCategory}
+                category={cat}
+                selected={selectedCategories.includes(cat)}
+                onSelectCategory={() => toggleCategory(cat)}
+                filters={categoryFilters[cat]}
+                onToggleFilter={(key, value) => toggleCategoryFilter(cat, key, value)}
+                products={products}
+                open={expanded[cat]}
+                onToggleOpen={() => setExpanded((e) => ({ ...e, [cat]: !e[cat] }))}
               />
             ))}
-          </FilterGroup>
-
-          <FilterGroup title="Price">
-            <PriceRangeSlider
-              min={priceBounds.min}
-              max={priceBounds.max}
-              value={priceRange}
-              onChange={(v) => {
-                setPriceRange(v);
-                setCurrentPage(1);
-              }}
-              currency={currency}
-            />
-          </FilterGroup>
-
-          {activeCategory && categoryMeta && (
-            <>
-              <FilterGroup title="Subcategory">
-                {categoryMeta.subcategories.map((sub) => (
-                  <Checkbox
-                    key={sub}
-                    label={sub}
-                    value={sub}
-                    checked={filters.subCategory.includes(sub)}
-                    onChange={(v) => toggleFilter("subCategory", v)}
-                  />
-                ))}
-              </FilterGroup>
-
-              {(activeCategory === "Clothing" || activeCategory === "Shoes") && (
-                <FilterGroup title="Audience">
-                  {categoryMeta.audience.map((aud) => (
-                    <Checkbox
-                      key={aud}
-                      label={aud}
-                      value={aud}
-                      checked={filters.audience.includes(aud)}
-                      onChange={(v) => toggleFilter("audience", v)}
-                    />
-                  ))}
-                </FilterGroup>
-              )}
-
-              {categoryMeta.sizes?.length > 0 && (
-                <FilterGroup title="Size">
-                  {categoryMeta.sizes.map((sz) => (
-                    <Checkbox
-                      key={sz}
-                      label={sz}
-                      value={sz}
-                      checked={filters.sizes.includes(sz)}
-                      onChange={(v) => toggleFilter("sizes", v)}
-                    />
-                  ))}
-                </FilterGroup>
-              )}
-
-              {categoryMeta.brand && (
-                <FilterGroup title="Brand">
-                  {brandOptions.length > 0 ? (
-                    brandOptions.map((b) => (
-                      <Checkbox
-                        key={b}
-                        label={b}
-                        value={b}
-                        checked={filters.brand.includes(b)}
-                        onChange={(v) => toggleFilter("brand", v)}
-                      />
-                    ))
-                  ) : (
-                    <p className="text-xs text-gray-400">No brands available</p>
-                  )}
-                </FilterGroup>
-              )}
-
-              {categoryMeta.ram && (
-                <FilterGroup title="RAM">
-                  {ramOptions.map((r) => (
-                    <Checkbox
-                      key={r}
-                      label={r}
-                      value={r}
-                      checked={filters.ram.includes(r)}
-                      onChange={(v) => toggleFilter("ram", v)}
-                    />
-                  ))}
-                </FilterGroup>
-              )}
-
-              {categoryMeta.storage && (
-                <FilterGroup title="Storage">
-                  {storageOptions.map((s) => (
-                    <Checkbox
-                      key={s}
-                      label={s}
-                      value={s}
-                      checked={filters.storage.includes(s)}
-                      onChange={(v) => toggleFilter("storage", v)}
-                    />
-                  ))}
-                </FilterGroup>
-              )}
-
-              {categoryMeta.skinType && (
-                <FilterGroup title="Skin Type">
-                  {skinTypeOptions.map((s) => (
-                    <Checkbox
-                      key={s}
-                      label={s}
-                      value={s}
-                      checked={filters.skinType.includes(s)}
-                      onChange={(v) => toggleFilter("skinType", v)}
-                    />
-                  ))}
-                </FilterGroup>
-              )}
-            </>
-          )}
+          </div>
         </div>
       </aside>
 
-      {/* Products */}
       <div className="flex-1 min-w-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           {showSearch && search ? (
@@ -475,7 +291,7 @@ const Collection = () => {
               setSortType(e.target.value);
               setCurrentPage(1);
             }}
-            className="border border-gray-200 rounded-lg text-sm px-3 py-2 w-full sm:w-auto max-w-[220px] bg-white text-gray-700 outline-none focus:border-gray-400"
+            className="border border-gray-200 rounded-lg text-sm px-3 py-2 w-full sm:w-auto max-w-[220px] bg-white text-gray-700 outline-none focus:border-gray-400 shadow-sm"
           >
             <option value="relevant">Sort by: Relevant</option>
             <option value="low-high">Sort by: Low to High</option>
@@ -517,9 +333,7 @@ const Collection = () => {
             <p className="text-base font-medium text-gray-800 mb-2">
               No products match the selected filters.
             </p>
-            <p className="text-sm text-gray-500 mb-6 max-w-md">
-              Try adjusting your filters.
-            </p>
+            <p className="text-sm text-gray-500 mb-6 max-w-md">Try adjusting your filters.</p>
             {hasActiveFilters && (
               <button
                 type="button"
